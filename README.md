@@ -1,50 +1,82 @@
-# Welcome to your Expo app 👋
+# Cashly
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Personal finance iOS app with iOS 26 Liquid Glass aesthetic. Tracks expenses, income, subscriptions, planned spends, and uses an envelope budgeting system with liquid-fill glass cards. Russian primary, English fallback.
 
-## Get started
+Built with Expo (React Native), TypeScript, Supabase. Target: sideload to iPhone via AltStore (single-user, no auth).
 
-1. Install dependencies
+## Setup
+
+1. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. **Create a Supabase project**
+   - Go to https://supabase.com, create a new project.
+   - In the SQL editor, run the contents of `supabase/migrations/0001_init.sql`. This creates the six tables (`categories`, `envelopes`, `expenses`, `recurring_payments`, `planned_expenses`, `incomes`), two RPCs (`allocate_envelope`, `adjust_envelope`), and seeds the 10 default categories plus one "Основной счёт" envelope.
+   - RLS is **off** by default — the anon key is the only access key the app uses. Do not open the project to external access.
+
+3. **Configure `.env`**
+
+   Copy the example file and fill in your project credentials:
 
    ```bash
-   npx expo start
+   cp .env.example .env
    ```
 
-In the output, you'll find options to open the app in a
+   ```
+   EXPO_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+   EXPO_PUBLIC_SUPABASE_KEY=sb_publishable_...
+   ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+4. **Run the app**
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+   ```bash
+   npm run ios
+   # or
+   npx expo start --ios
+   ```
 
-## Get a fresh project
+## Architecture
 
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+app/                     expo-router routes (5 tabs + root layout)
+src/
+  lib/                   supabase client, theme tokens, format helpers, icon map
+  types/                 row types for each table
+  services/              supabase CRUD modules (one per entity)
+  hooks/                 React hooks wrapping services
+  stores/                ui state (sheet open/close)
+  components/            shared components
+    glass/               GlassCard, CategoryBadge, EmojiBadge, IOSwitch, LiquidFill, SegmentedControl, ProgressRing, GlassIconBtn
+    home/                BalanceCard, IncomeWidget, QuickActions, UpcomingWidget, TxList, HomeHeader
+    sheets/              bottom-sheet modals (Add expense / income / recurring / planned / envelope, Income list, Allocate)
+  screens/               one per tab (HomeScreen, RecurringScreen, PlansScreen, EnvelopesScreen, CategoriesScreen)
+  i18n/                  ru.ts, en.ts, index.ts (useT hook)
+supabase/migrations/     SQL migration you apply by hand in the Supabase dashboard
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+No Supabase calls live in components — they go through `src/services/*.ts`, exposed via hooks.
 
-## Learn more
+## Features
 
-To learn more about developing your project with Expo, look at the following resources:
+- **Home** — balance hero card with month spending chart, income widget with 3 next incoming, quick actions, upcoming recurring preview, recent transactions with swipe-to-delete.
+- **Подписки (Bills)** — 14-day calendar strip, active/paused segmented, list with toggle + swipe-to-delete.
+- **Планы (Plans)** — merged calendar of active recurring payments and planned one-off spends, bucketed into "This week" / "Later".
+- **Конверты (Envelopes)** — the signature feature. Envelope types: `main` (pinned), `safety` (open savings), `bill` (recurring allocations), `limit` (monthly caps; goes coral at ≥85% full), `goal` (target + deadline). Each card renders with an animated liquid-fill wave. Allocate sheet moves money from main to any envelope.
+- **Категории (Categories)** — donut chart of last 30 days by category, searchable 3-column grid, add/remove custom categories. Default categories cannot be deleted; categories with expenses block deletion.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Interactions
 
-## Join the community
+- FAB (green bubble next to tab bar) always opens **Add expense**.
+- Dark/light and RU/EN toggles live in the Home header.
+- Swipe any transaction or subscription row to the left to reveal delete.
+- Expense can draw from a specific envelope (selector row in Add expense sheet); its balance is decremented via an `adjust_envelope` RPC.
+- Envelope-to-envelope transfers call `allocate_envelope` which does both updates in one PostgreSQL function.
 
-Join our community of developers creating universal apps.
+## Development notes
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- Typecheck: `npm run typecheck`
+- iOS target only (AltStore sideload). Web/Android entries are removed from `package.json` but the code is cross-platform except for `DateTimePicker` display differences and iOS-specific `Alert.prompt` in categories.
+- Reanimated 4 + `react-native-worklets` babel plugin is configured in `babel.config.js`.
