@@ -49,6 +49,13 @@ const BASE_CSS = `
     --cashly-sab: env(safe-area-inset-bottom, 0px);
     --cashly-sat: env(safe-area-inset-top, 0px);
   }
+  /* Tab bar: pin to viewport bottom so no react-navigation container or
+     safe-area wrapper can eat the offset. iOS PWA in standalone mode +
+     viewport-fit=cover lets 'bottom: N' anchor to the display edge. */
+  #cashly-tabbar {
+    position: fixed !important;
+    bottom: 10px !important;
+  }
   html, body {
     margin: 0;
     padding: 0;

@@ -46,14 +46,12 @@ const SPRING_MASS = 0.6;
 export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const { dark, tokens } = useTokens();
   const t = useT();
-  // Sit close to the bottom edge on both platforms. The iOS home indicator
-  // draws on top of whatever content is underneath, so overlapping it is OK
-  // and avoids the "empty zone" below the bar that a safe-area offset adds.
-  // On web we use position: fixed so the bar anchors to the viewport — not
-  // to whatever container react-navigation's tab layout sits in (that one
-  // reserves bottom space and was eating our offset).
-  const positionStyle =
-    Platform.OS === 'web' ? ({ position: 'fixed', bottom: 10 } as unknown as { bottom: number }) : { bottom: 26 };
+  // On web the actual positioning comes from a CSS rule in +html.tsx that
+  // targets #cashly-tabbar with `position: fixed; bottom: 10px` — RNW's
+  // style processor strips unknown position values, so we declare it in CSS
+  // where !important guarantees it wins over any react-navigation wrapper.
+  // On native we keep the original 26px offset.
+  const positionStyle = Platform.OS === 'web' ? { bottom: 10 } : { bottom: 26 };
   const textOff = dark ? 'rgba(235,235,245,0.5)' : 'rgba(60,60,67,0.55)';
   const accent = CashlyTheme.accent.income;
 
@@ -189,7 +187,11 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   };
 
   return (
-    <View style={[styles.wrap, positionStyle]} pointerEvents="box-none">
+    <View
+      nativeID={Platform.OS === 'web' ? 'cashly-tabbar' : undefined}
+      style={[styles.wrap, positionStyle]}
+      pointerEvents="box-none"
+    >
       <View
         style={[
           styles.pill,
