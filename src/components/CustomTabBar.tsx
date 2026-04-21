@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
@@ -47,13 +46,9 @@ const SPRING_MASS = 0.6;
 export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const { dark, tokens } = useTokens();
   const t = useT();
-  // Respect the phone's safe area via react-native-safe-area-context. On
-  // iOS PWA (and native iPhones with a home indicator) insets.bottom is the
-  // home-indicator height; we add a small gap so the pill sits just above
-  // it. On desktop/Android without a safe area, insets.bottom is 0 → 16px
-  // from the screen edge.
-  const insets = useSafeAreaInsets();
-  const bottomOffset = Math.max(16, insets.bottom + 4);
+  // Hard-coded small offset — no safe-area calculation. On iOS with a home
+  // indicator the bar overlaps it; the system draws the indicator on top.
+  const bottomOffset = 6;
   const textOff = dark ? 'rgba(235,235,245,0.5)' : 'rgba(60,60,67,0.55)';
   const accent = CashlyTheme.accent.income;
 
