@@ -71,6 +71,7 @@ export type Income = {
   kind: IncomeKind;
   next_date: string;
   is_active: boolean;
+  envelope_id: string | null;
   created_at: string;
 };
 

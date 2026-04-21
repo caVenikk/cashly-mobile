@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { DatePicker } from '@/src/components/DatePicker';
 import * as Haptics from 'expo-haptics';
 import { SheetShell } from './SheetShell';
 import { GlassCard } from '@/src/components/glass/GlassCard';
@@ -322,26 +322,9 @@ export function AddExpenseSheet() {
           </GlassCard>
         </View>
 
-        {showPicker ? (
-          <View style={{ alignItems: 'center', paddingHorizontal: 12 }}>
-            <DateTimePicker
-              value={new Date(date)}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'inline' : 'default'}
-              onChange={(event: DateTimePickerEvent, selected?: Date) => {
-                if (Platform.OS === 'android') setShowPicker(false);
-                if (event.type === 'set' && selected) {
-                  const m = String(selected.getMonth() + 1).padStart(2, '0');
-                  const d = String(selected.getDate()).padStart(2, '0');
-                  setDate(`${selected.getFullYear()}-${m}-${d}`);
-                }
-              }}
-              themeVariant={dark ? 'dark' : 'light'}
-              accentColor={CashlyTheme.accent.income}
-              locale={lang === 'ru' ? 'ru-RU' : 'en-US'}
-            />
-          </View>
-        ) : null}
+        <View style={{ alignItems: 'center', paddingHorizontal: 12 }}>
+          <DatePicker value={date} visible={showPicker} onChange={setDate} onDismiss={() => setShowPicker(false)} />
+        </View>
 
         {/* Numpad */}
         <View style={{ paddingHorizontal: 12, paddingTop: 8 }}>

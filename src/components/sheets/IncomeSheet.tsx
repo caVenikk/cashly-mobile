@@ -20,14 +20,25 @@ export function IncomeSheet() {
   const { tokens } = useTokens();
   const [lang] = useLang();
   const t = useT();
-  const { incomes, toggle, remove } = useIncomes();
+  const { incomes, toggle, remove, receive } = useIncomes();
 
   const regular = useMemo(() => incomes.filter((i) => i.kind === 'recurring'), [incomes]);
   const oneoff = useMemo(() => incomes.filter((i) => i.kind === 'oneoff'), [incomes]);
 
+  // Recurring: pause (is_active=false) removes from the month total.
+  // Oneoff: every row counts — "received" is ledger status, not a pause.
   const totalRegular = regular.filter((i) => i.is_active).reduce((s, i) => s + Number(i.amount), 0);
   const totalOneoff = oneoff.reduce((s, i) => s + Number(i.amount), 0);
   const total = totalRegular + totalOneoff;
+
+  const onReceive = async (inc: Income) => {
+    try {
+      await receive(inc);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  };
 
   return (
     <SheetShell open={open} onClose={() => setOpen(false)} snapPoints={['90%']}>
@@ -75,7 +86,7 @@ export function IncomeSheet() {
                 textTransform: 'uppercase',
               }}
             >
-              {t('expectedMonth')}
+              {t('monthIncome')}
             </Text>
             <Text
               style={{
@@ -113,6 +124,7 @@ export function IncomeSheet() {
                 isLast={i === regular.length - 1}
                 onToggle={() => toggle(inc.id, inc.is_active === false ? true : false)}
                 onDelete={() => remove(inc.id)}
+                onReceive={() => onReceive(inc)}
               />
             ))
           )}
@@ -127,7 +139,13 @@ export function IncomeSheet() {
             </View>
           ) : (
             oneoff.map((inc, i) => (
-              <IncomeRow key={inc.id} inc={inc} isLast={i === oneoff.length - 1} onDelete={() => remove(inc.id)} />
+              <IncomeRow
+                key={inc.id}
+                inc={inc}
+                isLast={i === oneoff.length - 1}
+                onDelete={() => remove(inc.id)}
+                onReceive={() => onReceive(inc)}
+              />
             ))
           )}
         </GlassCard>
@@ -173,11 +191,13 @@ function IncomeRow({
   isLast,
   onToggle,
   onDelete,
+  onReceive,
 }: {
   inc: Income;
   isLast: boolean;
   onToggle?: () => void;
   onDelete: () => void;
+  onReceive?: () => void;
 }) {
   const { tokens, dark } = useTokens();
   const [lang] = useLang();
@@ -186,13 +206,18 @@ function IncomeRow({
   const iconName = inc.kind === 'recurring' ? 'briefcase' : 'cards';
   const color = inc.kind === 'recurring' ? CashlyTheme.accent.income : CashlyTheme.accent.purple;
   const days = Math.round((new Date(inc.next_date).getTime() - Date.now()) / 86400000);
+  const due = inc.is_active && days <= 0;
+  // For oneoff rows, is_active=false means the income was already received;
+  // for recurring it means paused. Layout reacts to both.
+  const received = inc.kind === 'oneoff' && paused;
+  const canReceive = !!onReceive && inc.is_active;
 
   return (
     <View
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 10,
         paddingHorizontal: 16,
         paddingVertical: 14,
         borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
@@ -208,12 +233,33 @@ function IncomeRow({
           {inc.name}
         </Text>
         <Text style={{ fontSize: 12, color: tokens.textSecondary, marginTop: 2 }}>
-          {fmtDate(inc.next_date, 'd MMM', lang)} · {days} {t('dayShort')}.
+          {received ? t('incomeReceived') : `${fmtDate(inc.next_date, 'd MMM', lang)} · ${days} ${t('dayShort')}.`}
         </Text>
       </View>
-      <Text style={{ fontSize: 15, fontWeight: '700', color: CashlyTheme.accent.income, letterSpacing: -0.3 }}>
-        + {fmt(Number(inc.amount), lang)}
-      </Text>
+      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+        <Text style={{ fontSize: 14, fontWeight: '700', color: CashlyTheme.accent.income, letterSpacing: -0.3 }}>
+          + {fmt(Number(inc.amount), lang)}
+        </Text>
+        {canReceive ? (
+          <Pressable
+            onPress={() => {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              onReceive?.();
+            }}
+            hitSlop={4}
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 10,
+              backgroundColor: due ? CashlyTheme.accent.income : dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+            }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: '700', color: due ? '#fff' : tokens.text }}>
+              {t('incomeReceive')}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
       {onToggle ? (
         <IOSwitch on={!paused} onChange={onToggle} />
       ) : (

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
+import { DatePicker } from '@/src/components/DatePicker';
 import { SheetShell } from './SheetShell';
 import { GlassCard } from '@/src/components/glass/GlassCard';
 import { CashlyTheme } from '@/src/lib/theme';
@@ -12,6 +12,7 @@ import { useSheet } from '@/src/stores/ui';
 import { fmtDate, todayIso } from '@/src/lib/format';
 import { errorMessage } from '@/src/lib/errors';
 import { useIncomes } from '@/src/hooks/useIncomes';
+import { useEnvelopes } from '@/src/hooks/useEnvelopes';
 import type { IncomeKind } from '@/src/types/db';
 
 export function AddIncomeSheet() {
@@ -20,11 +21,14 @@ export function AddIncomeSheet() {
   const [lang] = useLang();
   const t = useT();
   const { create } = useIncomes();
+  const { envelopes } = useEnvelopes();
 
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [kind, setKind] = useState<IncomeKind>('recurring');
   const [date, setDate] = useState<string>(todayIso());
+  const [envId, setEnvId] = useState<string | null>(null);
+  const [alreadyReceived, setAlreadyReceived] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -35,7 +39,16 @@ export function AddIncomeSheet() {
     setKind('recurring');
     setDate(todayIso());
     setShowPicker(false);
+    setAlreadyReceived(false);
+    setEnvId(envelopes.find((e) => e.kind === 'main')?.id ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // "Already received" only makes sense for one-off incomes; reset it whenever
+  // the user flips back to recurring so it can't be smuggled in.
+  useEffect(() => {
+    if (kind === 'recurring' && alreadyReceived) setAlreadyReceived(false);
+  }, [kind, alreadyReceived]);
 
   const canSave = !saving && name.trim().length > 0 && parseFloat(amount || '0') > 0;
 
@@ -44,22 +57,20 @@ export function AddIncomeSheet() {
     Keyboard.dismiss();
     setSaving(true);
     try {
-      await create({ name: name.trim(), amount: parseFloat(amount), kind, next_date: date });
+      await create({
+        name: name.trim(),
+        amount: parseFloat(amount),
+        kind,
+        next_date: date,
+        envelope_id: envId,
+        already_received: kind === 'oneoff' && alreadyReceived,
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setOpen(false);
     } catch (e) {
       Alert.alert('Ошибка', errorMessage(e));
     } finally {
       setSaving(false);
-    }
-  };
-
-  const onPickDate = (event: DateTimePickerEvent, selected?: Date) => {
-    if (Platform.OS === 'android') setShowPicker(false);
-    if (event.type === 'set' && selected) {
-      const m = String(selected.getMonth() + 1).padStart(2, '0');
-      const d = String(selected.getDate()).padStart(2, '0');
-      setDate(`${selected.getFullYear()}-${m}-${d}`);
     }
   };
 
@@ -139,28 +150,86 @@ export function AddIncomeSheet() {
               Keyboard.dismiss();
               setShowPicker(true);
             }}
-            style={[styles.row, { borderBottomWidth: 0 }]}
+            style={styles.row}
           >
-            <Text style={[styles.rowLabel, { color: tokens.textSecondary }]}>{t('incomeNextDate')}</Text>
+            <Text style={[styles.rowLabel, { color: tokens.textSecondary }]}>
+              {kind === 'oneoff' ? t('incomeDate') : t('incomeNextDate')}
+            </Text>
             <Text style={{ fontSize: 15, fontWeight: '600', color: tokens.text }}>
               {fmtDate(date, 'd MMMM yyyy', lang)}
             </Text>
           </Pressable>
+          {kind === 'oneoff' ? (
+            <Pressable
+              onPress={() => {
+                Keyboard.dismiss();
+                Haptics.selectionAsync();
+                setAlreadyReceived((v) => !v);
+              }}
+              style={styles.row}
+            >
+              <Text style={[styles.rowLabel, { color: tokens.textSecondary }]}>{t('incomeAlreadyReceived')}</Text>
+              <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 7,
+                    borderWidth: 2,
+                    borderColor: alreadyReceived
+                      ? CashlyTheme.accent.income
+                      : dark
+                        ? 'rgba(255,255,255,0.25)'
+                        : 'rgba(0,0,0,0.2)',
+                    backgroundColor: alreadyReceived ? CashlyTheme.accent.income : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {alreadyReceived ? (
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '900', lineHeight: 16 }}>✓</Text>
+                  ) : null}
+                </View>
+              </View>
+            </Pressable>
+          ) : null}
+          <View style={[styles.row, { borderBottomWidth: 0, alignItems: 'flex-start' }]}>
+            <Text style={[styles.rowLabel, { color: tokens.textSecondary, paddingTop: 4 }]}>{t('envTarget')}</Text>
+            <View style={{ flexDirection: 'row', gap: 6, flex: 1, flexWrap: 'wrap' }}>
+              {envelopes.map((e) => {
+                const on = envId === e.id;
+                return (
+                  <Pressable
+                    key={e.id}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      Haptics.selectionAsync();
+                      setEnvId(e.id);
+                    }}
+                    style={{
+                      paddingVertical: 4,
+                      paddingHorizontal: 8,
+                      borderRadius: 10,
+                      backgroundColor: on ? e.color : dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <Text style={{ fontSize: 13 }}>{e.emoji}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: on ? '#fff' : tokens.textSecondary }}>
+                      {e.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
         </GlassCard>
 
-        {showPicker ? (
-          <View style={{ marginTop: 16, alignItems: 'center' }}>
-            <DateTimePicker
-              value={new Date(date)}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'inline' : 'default'}
-              onChange={onPickDate}
-              themeVariant={dark ? 'dark' : 'light'}
-              accentColor={CashlyTheme.accent.income}
-              locale={lang === 'ru' ? 'ru-RU' : 'en-US'}
-            />
-          </View>
-        ) : null}
+        <View style={{ marginTop: 16, alignItems: 'center' }}>
+          <DatePicker value={date} visible={showPicker} onChange={setDate} onDismiss={() => setShowPicker(false)} />
+        </View>
       </BottomSheetScrollView>
     </SheetShell>
   );

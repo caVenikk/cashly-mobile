@@ -15,6 +15,7 @@ import { fmt, fmtDate, daysUntil } from '@/src/lib/format';
 import { useRecurring } from '@/src/hooks/useRecurring';
 import { usePlanned } from '@/src/hooks/usePlanned';
 import { useCategories } from '@/src/hooks/useCategories';
+import { useIncomes } from '@/src/hooks/useIncomes';
 import { useRefresh } from '@/src/hooks/useRefresh';
 import { catById } from '@/src/lib/categoryHelpers';
 import { uiStore } from '@/src/stores/ui';
@@ -26,6 +27,7 @@ type ViewMode = 'list' | 'calendar';
 type Entry = {
   id: string;
   kind: 'recurring' | 'oneoff';
+  direction: 'in' | 'out';
   name: string;
   amount: number;
   date: string;
@@ -41,11 +43,12 @@ export function PlansScreen() {
   const { recurring, refresh: refreshRec } = useRecurring();
   const { planned, refresh: refreshPl } = usePlanned();
   const { categories, refresh: refreshCat } = useCategories();
+  const { incomes, refresh: refreshInc } = useIncomes();
   const [filter, setFilter] = useState<Filter>('all');
   const [view, setView] = useState<ViewMode>('list');
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const { refreshing, onRefresh } = useRefresh([refreshRec, refreshPl, refreshCat]);
+  const { refreshing, onRefresh } = useRefresh([refreshRec, refreshPl, refreshCat, refreshInc]);
 
   const horizonEnd = useMemo(() => {
     const d = new Date(calendarMonth);
@@ -71,6 +74,7 @@ export function PlansScreen() {
         out.push({
           id: `r:${r.id}:${iso}`,
           kind: 'recurring',
+          direction: 'out',
           name: r.name,
           amount: Number(r.amount),
           date: iso,
@@ -85,6 +89,7 @@ export function PlansScreen() {
       out.push({
         id: `p:${p.id}`,
         kind: 'oneoff',
+        direction: 'out',
         name: p.name,
         amount: Number(p.amount),
         date: p.target_date,
@@ -93,8 +98,40 @@ export function PlansScreen() {
       });
     }
 
+    // Planned incomes: active recurring (projected forward, monthly cadence)
+    // plus unreceived oneoffs (is_active=true means "not yet received").
+    for (const inc of incomes) {
+      if (!inc.is_active) continue;
+      if (inc.kind === 'recurring') {
+        const occurrences = projectRecurrence(inc.next_date, 'monthly', horizonEnd);
+        for (const iso of occurrences) {
+          out.push({
+            id: `in:${inc.id}:${iso}`,
+            kind: 'recurring',
+            direction: 'in',
+            name: inc.name,
+            amount: Number(inc.amount),
+            date: iso,
+            inDays: daysUntil(iso),
+            categoryId: null,
+          });
+        }
+      } else {
+        out.push({
+          id: `in:${inc.id}`,
+          kind: 'oneoff',
+          direction: 'in',
+          name: inc.name,
+          amount: Number(inc.amount),
+          date: inc.next_date,
+          inDays: daysUntil(inc.next_date),
+          categoryId: null,
+        });
+      }
+    }
+
     return out.sort((a, b) => a.date.localeCompare(b.date));
-  }, [recurring, planned, horizonEnd]);
+  }, [recurring, planned, incomes, horizonEnd]);
 
   const filtered = useMemo(() => {
     const f = filter === 'all' ? projectedEntries : projectedEntries.filter((e) => e.kind === filter);
@@ -116,11 +153,12 @@ export function PlansScreen() {
     return filtered.map((e) => ({
       id: e.id,
       date: e.date,
-      color: catById(categories, e.categoryId).color,
+      color: e.direction === 'in' ? CashlyTheme.accent.income : catById(categories, e.categoryId).color,
     }));
   }, [filtered, categories]);
 
-  const total = forList.reduce((s, e) => s + e.amount, 0);
+  const totalSpending = forList.filter((e) => e.direction === 'out').reduce((s, e) => s + e.amount, 0);
+  const totalIncoming = forList.filter((e) => e.direction === 'in').reduce((s, e) => s + e.amount, 0);
   const recurCount = projectedEntries.filter((e) => e.kind === 'recurring').length;
   const oneoffCount = projectedEntries.filter((e) => e.kind === 'oneoff').length;
 
@@ -230,9 +268,37 @@ export function PlansScreen() {
               >
                 {t('plansForMonth')}
               </Text>
-              <Text style={{ fontSize: 30, fontWeight: '800', color: tokens.text, letterSpacing: -0.8, marginTop: 2 }}>
-                {fmt(total, lang)}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 14, marginTop: 2, flexWrap: 'wrap' }}>
+                {totalIncoming > 0 ? (
+                  <Text
+                    style={{
+                      fontSize: 26,
+                      fontWeight: '800',
+                      color: CashlyTheme.accent.income,
+                      letterSpacing: -0.6,
+                    }}
+                  >
+                    + {fmt(totalIncoming, lang)}
+                  </Text>
+                ) : null}
+                {totalSpending > 0 ? (
+                  <Text
+                    style={{
+                      fontSize: 26,
+                      fontWeight: '800',
+                      color: CashlyTheme.accent.expense,
+                      letterSpacing: -0.6,
+                    }}
+                  >
+                    − {fmt(totalSpending, lang)}
+                  </Text>
+                ) : null}
+                {totalIncoming === 0 && totalSpending === 0 ? (
+                  <Text style={{ fontSize: 26, fontWeight: '800', color: tokens.text, letterSpacing: -0.6 }}>
+                    {fmt(0, lang)}
+                  </Text>
+                ) : null}
+              </View>
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
                 <Chip color={CashlyTheme.accent.income} icon="repeat" label={t('planRecurring')} value={recurCount} />
                 <Chip color={CashlyTheme.accent.purple} icon="flash" label={t('planOneOff')} value={oneoffCount} />
@@ -410,12 +476,15 @@ function PlanRow({ e, isLast, category }: { e: Entry; isLast: boolean; category:
   const { tokens, dark } = useTokens();
   const [lang] = useLang();
   const t = useT();
+  const isIn = e.direction === 'in';
   const urgent = e.inDays <= 3;
-  const due = urgent
-    ? CashlyTheme.accent.expense
-    : e.inDays <= 7
-      ? CashlyTheme.accent.orange
-      : CashlyTheme.accent.income;
+  const due = isIn
+    ? CashlyTheme.accent.income
+    : urgent
+      ? CashlyTheme.accent.expense
+      : e.inDays <= 7
+        ? CashlyTheme.accent.orange
+        : CashlyTheme.accent.income;
 
   return (
     <View
@@ -449,9 +518,15 @@ function PlanRow({ e, isLast, category }: { e: Entry; isLast: boolean; category:
         </Text>
       </View>
 
-      <CategoryBadge color={category.color} size={36} radius={11}>
-        <CategoryIcon icon={category.icon} size={16} />
-      </CategoryBadge>
+      {isIn ? (
+        <CategoryBadge color={CashlyTheme.accent.income} size={36} radius={11}>
+          <Icon name={e.kind === 'recurring' ? 'briefcase' : 'cards'} color="#fff" size={16} />
+        </CategoryBadge>
+      ) : (
+        <CategoryBadge color={category.color} size={36} radius={11}>
+          <CategoryIcon icon={category.icon} size={16} />
+        </CategoryBadge>
+      )}
 
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '600', color: tokens.text, letterSpacing: -0.2 }}>
@@ -497,7 +572,15 @@ function PlanRow({ e, isLast, category }: { e: Entry; isLast: boolean; category:
           </Text>
         </View>
       </View>
-      <Text style={{ fontSize: 15, fontWeight: '700', color: tokens.text, letterSpacing: -0.3 }}>
+      <Text
+        style={{
+          fontSize: 15,
+          fontWeight: '700',
+          color: isIn ? CashlyTheme.accent.income : tokens.text,
+          letterSpacing: -0.3,
+        }}
+      >
+        {isIn ? '+ ' : ''}
         {fmt(e.amount, lang)}
       </Text>
     </View>

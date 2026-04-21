@@ -22,9 +22,20 @@ export function IncomeWidget({ incomes, onOpenList }: Props) {
   const [lang] = useLang();
   const t = useT();
 
-  const active = useMemo(() => incomes.filter((i) => i.is_active), [incomes]);
-  const expected = active.reduce((s, i) => s + Number(i.amount), 0);
-  const next = [...active].sort((a, b) => daysUntil(a.next_date) - daysUntil(b.next_date)).slice(0, 3);
+  // Split: received (is_active=false oneoff — real money already in)
+  // vs expected (active recurring + unreceived oneoff — money coming).
+  const received = useMemo(
+    () => incomes.filter((i) => i.kind === 'oneoff' && !i.is_active).reduce((s, i) => s + Number(i.amount), 0),
+    [incomes],
+  );
+  const expected = useMemo(
+    () => incomes.filter((i) => i.is_active).reduce((s, i) => s + Number(i.amount), 0),
+    [incomes],
+  );
+  const totalThisMonth = received + expected;
+  // "Upcoming" tiles — only still-pending incomes (active recurring + unreceived oneoff).
+  const upcoming = useMemo(() => incomes.filter((i) => i.is_active), [incomes]);
+  const next = [...upcoming].sort((a, b) => daysUntil(a.next_date) - daysUntil(b.next_date)).slice(0, 3);
 
   return (
     <GlassCard style={{ marginHorizontal: 16, marginTop: 18 }}>
@@ -49,7 +60,7 @@ export function IncomeWidget({ incomes, onOpenList }: Props) {
                   textTransform: 'uppercase',
                 }}
               >
-                {t('expectedMonth')}
+                {t('monthIncome')}
               </Text>
             </View>
             <Text
@@ -61,8 +72,22 @@ export function IncomeWidget({ incomes, onOpenList }: Props) {
                 marginTop: 3,
               }}
             >
-              + {fmt(expected, lang)}
+              + {fmt(totalThisMonth, lang)}
             </Text>
+            {received > 0 || expected > 0 ? (
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
+                {received > 0 ? (
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: CashlyTheme.accent.income }}>
+                    {t('incomeReceivedLabel')}: + {fmt(received, lang)}
+                  </Text>
+                ) : null}
+                {expected > 0 ? (
+                  <Text style={{ fontSize: 11, fontWeight: '500', color: tokens.textSecondary }}>
+                    {t('incomeExpectedLabel')}: + {fmt(expected, lang)}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
           </View>
           <Pressable
             onPress={() => {

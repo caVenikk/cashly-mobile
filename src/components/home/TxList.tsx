@@ -1,7 +1,11 @@
 import React, { useMemo } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { GlassCard } from '@/src/components/glass/GlassCard';
 import { TxRow } from '@/src/components/TxRow';
+import { Icon } from '@/src/components/Icon';
+import { CashlyTheme } from '@/src/lib/theme';
 import { useTokens } from '@/src/lib/themeMode';
 import { useT, useLang } from '@/src/i18n';
 import { fmtDate, todayIso } from '@/src/lib/format';
@@ -17,15 +21,21 @@ export function TxList({ expenses, categories, onDelete }: Props) {
   const { tokens } = useTokens();
   const t = useT();
   const [lang] = useLang();
+  const router = useRouter();
+
+  const openHistory = () => {
+    Haptics.selectionAsync();
+    router.push('/history');
+  };
 
   const grouped = useMemo(() => groupByDay(expenses.slice(0, 20)), [expenses]);
 
   if (expenses.length === 0) {
     return (
       <View style={{ marginHorizontal: 16, marginTop: 18, marginBottom: 140 }}>
-        <Text style={{ fontSize: 18, fontWeight: '700', color: tokens.text, paddingHorizontal: 4, paddingBottom: 10 }}>
-          {t('recentTx')}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, paddingBottom: 10 }}>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: tokens.text, flex: 1 }}>{t('recentTx')}</Text>
+        </View>
         <GlassCard radius={22}>
           <View style={{ padding: 24, alignItems: 'center' }}>
             <Text style={{ fontSize: 13, color: tokens.textSecondary }}>{t('emptyExpenses')}</Text>
@@ -46,11 +56,24 @@ export function TxList({ expenses, categories, onDelete }: Props) {
 
   return (
     <View style={{ marginHorizontal: 16, marginTop: 18, marginBottom: 140 }}>
-      <View style={{ paddingHorizontal: 4, paddingBottom: 10 }}>
-        <Text style={{ fontSize: 18, fontWeight: '700', color: tokens.text, letterSpacing: -0.3 }}>
+      <Pressable
+        onPress={openHistory}
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 4,
+          paddingBottom: 10,
+          opacity: pressed ? 0.7 : 1,
+        })}
+      >
+        <Text style={{ fontSize: 18, fontWeight: '700', color: tokens.text, letterSpacing: -0.3, flex: 1 }}>
           {t('recentTx')}
         </Text>
-      </View>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: CashlyTheme.accent.income, marginRight: 4 }}>
+          {t('seeAll')}
+        </Text>
+        <Icon name="arrow" color={CashlyTheme.accent.income} size={16} />
+      </Pressable>
       {grouped.map((g) => {
         const label = g.key === today ? t('today') : g.key === yIso ? t('yesterday') : fmtDate(g.key, 'd MMMM', lang);
         return (

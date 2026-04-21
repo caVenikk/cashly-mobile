@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
@@ -9,14 +10,20 @@ if (!url || !publicKey) {
   );
 }
 
-// Use an untyped client — the Supabase typed Database gets gnarly fast with our
-// Insert/Update semantics. We enforce shapes manually in src/services/*.
-// Fallback URL must parse through validateSupabaseUrl (requires http/https scheme)
-// so static pre-rendering doesn't explode when env vars are unset at build time.
+// On web the default storage is localStorage, which is what we want for "stay
+// logged in across reloads". On native there is no built-in storage adapter
+// without async-storage/mmkv, so we fall back to in-memory: sessions won't
+// survive app restart, but the deployed target is web-first.
+const persistSession = Platform.OS === 'web';
+
 export const supabase: SupabaseClient = createClient(
   url || 'https://placeholder.supabase.co',
   publicKey || 'placeholder',
   {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    auth: {
+      persistSession,
+      autoRefreshToken: persistSession,
+      detectSessionInUrl: false,
+    },
   },
 );

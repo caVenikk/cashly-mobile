@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, TextInput, View, ScrollView } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View, ScrollView } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { DatePicker } from '@/src/components/DatePicker';
 import * as Haptics from 'expo-haptics';
 import { SheetShell } from './SheetShell';
 import { GlassCard } from '@/src/components/glass/GlassCard';
@@ -299,20 +299,12 @@ export function AddEnvelopeSheet() {
           ) : null}
         </GlassCard>
 
-        {showPicker && kind === 'goal' ? (
-          <DateTimePicker
-            value={new Date(deadline)}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'inline' : 'default'}
-            onChange={(event: DateTimePickerEvent, selected?: Date) => {
-              if (Platform.OS === 'android') setShowPicker(false);
-              if (event.type === 'set' && selected) {
-                const m = String(selected.getMonth() + 1).padStart(2, '0');
-                const d = String(selected.getDate()).padStart(2, '0');
-                setDeadline(`${selected.getFullYear()}-${m}-${d}`);
-              }
-            }}
-            locale={lang === 'ru' ? 'ru-RU' : 'en-US'}
+        {kind === 'goal' ? (
+          <DatePicker
+            value={deadline}
+            visible={showPicker}
+            onChange={setDeadline}
+            onDismiss={() => setShowPicker(false)}
           />
         ) : null}
       </BottomSheetScrollView>

@@ -1,12 +1,16 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Svg, { Defs, Line, LinearGradient as SvgLinearGradient, Path, Stop } from 'react-native-svg';
+import React, { useMemo, useState } from 'react';
+import { Pressable, View, Text, StyleSheet } from 'react-native';
+import Svg, { Line, Rect } from 'react-native-svg';
+import * as Haptics from 'expo-haptics';
 import { GlassCard } from '@/src/components/glass/GlassCard';
+import { Icon } from '@/src/components/Icon';
 import { CashlyTheme } from '@/src/lib/theme';
 import { useTokens } from '@/src/lib/themeMode';
 import { useLang, useT } from '@/src/i18n';
 import { fmt, fmtDateObj } from '@/src/lib/format';
 import type { Expense, Income } from '@/src/types/db';
+import { useEnvelopes } from '@/src/hooks/useEnvelopes';
+import { chartFilter, useChartExcluded } from '@/src/stores/chartFilter';
 
 type Props = {
   monthExpenses: Expense[];
@@ -20,18 +24,50 @@ export function BalanceCard({ monthExpenses, incomes }: Props) {
   const { tokens, dark } = useTokens();
   const [lang] = useLang();
   const t = useT();
+  const { envelopes } = useEnvelopes();
+  const excluded = useChartExcluded();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const spent = useMemo(() => monthExpenses.reduce((s, e) => s + Number(e.amount), 0), [monthExpenses]);
+  // Null envelope_id is treated as the main envelope (its implicit default)
+  // so "uncheck everything" really empties the chart, and toggling main alone
+  // hides orphaned rows too.
+  const mainId = useMemo(() => envelopes.find((e) => e.kind === 'main')?.id ?? null, [envelopes]);
+  const isVisible = useMemo(() => {
+    return (eid: string | null | undefined): boolean => {
+      if (excluded.size === 0) return true;
+      const effective = eid ?? mainId;
+      if (!effective) return false;
+      return !excluded.has(effective);
+    };
+  }, [excluded, mainId]);
+
+  // Apply the envelope filter before any aggregation. Chart stays internally
+  // consistent: income - spent uses the same envelope set for both sides.
+  const filteredExpenses = useMemo(
+    () => monthExpenses.filter((e) => isVisible(e.envelope_id)),
+    [monthExpenses, isVisible],
+  );
+  const filteredIncomes = useMemo(() => incomes.filter((i) => isVisible(i.envelope_id)), [incomes, isVisible]);
+
+  const spent = useMemo(() => filteredExpenses.reduce((s, e) => s + Number(e.amount), 0), [filteredExpenses]);
+  // Income totals include: active recurring (monthly assumption) + every oneoff,
+  // received or not. "Received" on a oneoff is the ledger confirmation, not a
+  // pause — it's still this month's revenue and belongs on the chart.
   const expectedIncome = useMemo(
-    () => incomes.filter((i) => i.is_active).reduce((s, i) => s + Number(i.amount), 0),
-    [incomes],
+    () =>
+      filteredIncomes
+        .filter((i) => (i.kind === 'recurring' ? i.is_active : true))
+        .reduce((s, i) => s + Number(i.amount), 0),
+    [filteredIncomes],
   );
   const balance = expectedIncome - spent;
 
-  const chart = useMemo(() => buildBalancePath(monthExpenses, expectedIncome), [monthExpenses, expectedIncome]);
+  const chart = useMemo(() => buildDailyBars(filteredExpenses), [filteredExpenses]);
 
   const positive = balance >= 0;
   const accent = positive ? CashlyTheme.accent.income : CashlyTheme.accent.expense;
+  const filterActive = excluded.size > 0;
+  const envelopeIds = useMemo(() => envelopes.map((e) => e.id), [envelopes]);
 
   return (
     <GlassCard strong style={{ marginHorizontal: 16, marginTop: 20 }}>
@@ -48,7 +84,133 @@ export function BalanceCard({ monthExpenses, incomes }: Props) {
           >
             {fmtDateObj(new Date(), 'LLLL yyyy', lang)}
           </Text>
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              setMenuOpen((v) => !v);
+            }}
+            hitSlop={8}
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 9,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: menuOpen
+                ? CashlyTheme.accent.income
+                : filterActive
+                  ? dark
+                    ? 'rgba(52,199,89,0.18)'
+                    : 'rgba(52,199,89,0.14)'
+                  : dark
+                    ? 'rgba(255,255,255,0.06)'
+                    : 'rgba(0,0,0,0.04)',
+            }}
+          >
+            <Icon
+              name="filter"
+              color={menuOpen ? '#fff' : filterActive ? CashlyTheme.accent.income : tokens.textSecondary}
+              size={15}
+            />
+          </Pressable>
         </View>
+
+        {menuOpen ? (
+          <View
+            style={{
+              marginTop: 12,
+              padding: 12,
+              borderRadius: 14,
+              backgroundColor: dark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)',
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: tokens.hairline,
+            }}
+          >
+            <View style={styles.headerRow}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: tokens.textSecondary, letterSpacing: 0.3 }}>
+                {t('chartFilter')}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    chartFilter.setAll(envelopeIds);
+                  }}
+                  hitSlop={4}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 10,
+                    backgroundColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: tokens.textSecondary }}>
+                    {t('chartFilterAll')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    chartFilter.setNone(envelopeIds);
+                  }}
+                  hitSlop={4}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 10,
+                    backgroundColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: tokens.textSecondary }}>
+                    {t('chartFilterNone')}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+            <View style={{ marginTop: 10, gap: 2 }}>
+              {envelopes.map((e) => {
+                const checked = !excluded.has(e.id);
+                return (
+                  <Pressable
+                    key={e.id}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      chartFilter.toggle(e.id);
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                      paddingVertical: 8,
+                      paddingHorizontal: 4,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 6,
+                        borderWidth: 2,
+                        borderColor: checked ? e.color : dark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)',
+                        backgroundColor: checked ? e.color : 'transparent',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {checked ? (
+                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '900', lineHeight: 14 }}>✓</Text>
+                      ) : null}
+                    </View>
+                    <Text style={{ fontSize: 14 }}>{e.emoji}</Text>
+                    <Text numberOfLines={1} style={{ flex: 1, fontSize: 13, fontWeight: '600', color: tokens.text }}>
+                      {e.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
 
         <Text
           style={{ fontSize: 44, fontWeight: '800', color: accent, letterSpacing: -1.5, marginTop: 2, lineHeight: 46 }}
@@ -61,61 +223,55 @@ export function BalanceCard({ monthExpenses, incomes }: Props) {
 
         <View style={{ marginTop: 16, marginBottom: 4 }}>
           <Svg width="100%" height={HEIGHT} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="none">
-            <Defs>
-              <SvgLinearGradient id="balFillPos" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor={CashlyTheme.accent.income} stopOpacity={0.35} />
-                <Stop offset="100%" stopColor={CashlyTheme.accent.income} stopOpacity={0} />
-              </SvgLinearGradient>
-              <SvgLinearGradient id="balFillNeg" x1="0" y1="1" x2="0" y2="0">
-                <Stop offset="0%" stopColor={CashlyTheme.accent.expense} stopOpacity={0.35} />
-                <Stop offset="100%" stopColor={CashlyTheme.accent.expense} stopOpacity={0} />
-              </SvgLinearGradient>
-            </Defs>
+            {/* Baseline at the bottom */}
+            <Line
+              x1={0}
+              x2={WIDTH}
+              y1={HEIGHT - 0.5}
+              y2={HEIGHT - 0.5}
+              stroke={tokens.textTertiary}
+              strokeWidth={0.6}
+              opacity={0.3}
+            />
 
-            {/* Zero baseline */}
-            {chart.showZeroLine ? (
+            {chart.bars.map((b) => (
+              <Rect
+                key={b.day}
+                x={b.x}
+                y={b.y}
+                width={b.w}
+                height={b.h}
+                rx={b.w > 5 ? 1.5 : 1}
+                ry={b.w > 5 ? 1.5 : 1}
+                fill={b.isToday ? CashlyTheme.accent.income : CashlyTheme.accent.expense}
+                opacity={b.h === 0 ? 0.15 : b.isToday ? 0.95 : 0.85}
+              />
+            ))}
+
+            {/* Today vertical guide */}
+            {chart.todayX !== null ? (
               <Line
-                x1={0}
-                x2={WIDTH}
-                y1={chart.zeroY}
-                y2={chart.zeroY}
-                stroke={tokens.textTertiary}
-                strokeWidth={0.8}
-                strokeDasharray="3 4"
-                opacity={0.6}
+                x1={chart.todayX}
+                x2={chart.todayX}
+                y1={0}
+                y2={HEIGHT}
+                stroke={CashlyTheme.accent.income}
+                strokeWidth={1}
+                strokeDasharray="2 3"
+                opacity={0.35}
               />
             ) : null}
-
-            {/* Positive fill */}
-            {chart.posFill ? <Path d={chart.posFill} fill="url(#balFillPos)" /> : null}
-            {/* Negative fill */}
-            {chart.negFill ? <Path d={chart.negFill} fill="url(#balFillNeg)" /> : null}
-
-            {/* Positive line segments */}
-            {chart.posLines.map((d, i) => (
-              <Path
-                key={`p${i}`}
-                d={d}
-                fill="none"
-                stroke={CashlyTheme.accent.income}
-                strokeWidth={2.2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ))}
-            {/* Negative line segments */}
-            {chart.negLines.map((d, i) => (
-              <Path
-                key={`n${i}`}
-                d={d}
-                fill="none"
-                stroke={CashlyTheme.accent.expense}
-                strokeWidth={2.2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ))}
           </Svg>
+          {chart.maxSpend > 0 ? (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+              <Text style={{ fontSize: 10, color: tokens.textTertiary, fontWeight: '500' }}>
+                {lang === 'ru' ? 'макс/день' : 'max/day'}: {fmt(chart.maxSpend, lang)}
+              </Text>
+              <Text style={{ fontSize: 10, color: tokens.textTertiary, fontWeight: '500' }}>
+                {chart.spendDays} {lang === 'ru' ? 'дн. трат' : 'spend days'}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
@@ -170,26 +326,21 @@ function MiniStat({
   );
 }
 
-// Build a running-balance chart across the current month.
-// Point for each day of the month so far: runningBalance = expectedIncome - cumulativeSpent.
-// Splits into positive (green) and negative (coral) segments at the zero crossing.
-function buildBalancePath(
-  expenses: Expense[],
-  expectedIncome: number,
-): {
-  zeroY: number;
-  showZeroLine: boolean;
-  posLines: string[];
-  negLines: string[];
-  posFill: string | null;
-  negFill: string | null;
-} {
+type BarChart = {
+  bars: { day: number; x: number; y: number; w: number; h: number; isToday: boolean }[];
+  todayX: number | null;
+  maxSpend: number;
+  spendDays: number;
+};
+
+// Daily spending bars for the current month. Each bar = sum of expenses on
+// that day. Bars past today render as empty (no data yet), today highlighted.
+function buildDailyBars(expenses: Expense[]): BarChart {
   const now = new Date();
   const y = now.getFullYear();
   const m = now.getMonth();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   const today = now.getDate();
-  const days = Math.max(today, 1);
 
   const spendByDay = new Array<number>(daysInMonth).fill(0);
   for (const e of expenses) {
@@ -199,91 +350,35 @@ function buildBalancePath(
     if (idx >= 0 && idx < daysInMonth) spendByDay[idx] += Number(e.amount);
   }
 
-  const points: number[] = [];
-  let cum = 0;
-  for (let i = 0; i < days; i++) {
-    cum += spendByDay[i];
-    points.push(expectedIncome - cum);
-  }
+  const maxSpend = Math.max(0, ...spendByDay);
+  const spendDays = spendByDay.filter((v) => v > 0).length;
+  const slotW = WIDTH / daysInMonth;
+  const gap = Math.min(2, slotW * 0.15);
+  const barW = Math.max(1, slotW - gap);
+  const padTop = 4;
+  const usableH = HEIGHT - padTop - 2;
 
-  if (points.length === 1) {
-    // Ensure at least 2 points for drawing a line.
-    points.push(points[0]);
-  }
+  const bars = spendByDay.map((amount, i) => {
+    const day = i + 1;
+    // Days past today get a ghost-height (tiny) so the timeline stays visible
+    // but future days aren't mistaken for real zero-spend days.
+    const isFuture = day > today;
+    const normalized = maxSpend > 0 ? amount / maxSpend : 0;
+    const rawH = normalized * usableH;
+    const h = isFuture ? 0 : amount > 0 ? Math.max(rawH, 2) : 1;
+    return {
+      day,
+      x: i * slotW + gap / 2,
+      y: HEIGHT - h,
+      w: barW,
+      h,
+      isToday: day === today,
+    };
+  });
 
-  const minY = Math.min(0, ...points);
-  const maxY = Math.max(0, ...points);
-  const range = Math.max(maxY - minY, 1);
-  const stepX = WIDTH / (points.length - 1);
+  const todayX = today >= 1 && today <= daysInMonth ? (today - 0.5) * slotW : null;
 
-  const mapY = (v: number) => HEIGHT - ((v - minY) / range) * HEIGHT;
-  const zeroY = mapY(0);
-  const showZeroLine = minY < 0 && maxY > 0;
-
-  // Build segments split by zero-axis crossings.
-  type Segment = { sign: 'pos' | 'neg' | 'zero'; pts: [number, number][] };
-  const segments: Segment[] = [];
-  let current: Segment | null = null;
-
-  const coords: [number, number][] = points.map((p, i) => [i * stepX, mapY(p)]);
-
-  for (let i = 0; i < coords.length; i++) {
-    const [x, yCoord] = coords[i];
-    const v = points[i];
-    const sign: Segment['sign'] = v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero';
-
-    if (!current || current.sign !== sign) {
-      // If transitioning, insert the zero-crossing point for smooth visual continuity.
-      if (current && current.pts.length > 0 && i > 0) {
-        const prevV = points[i - 1];
-        if ((prevV > 0 && v < 0) || (prevV < 0 && v > 0)) {
-          const [px] = coords[i - 1];
-          const t = Math.abs(prevV) / (Math.abs(prevV) + Math.abs(v));
-          const crossX = px + (x - px) * t;
-          current.pts.push([crossX, zeroY]);
-          current = { sign, pts: [[crossX, zeroY]] };
-          segments.push(current);
-        } else {
-          current = { sign, pts: [] };
-          segments.push(current);
-        }
-      } else {
-        current = { sign, pts: [] };
-        segments.push(current);
-      }
-    }
-    current.pts.push([x, yCoord]);
-  }
-
-  const posLines: string[] = [];
-  const negLines: string[] = [];
-  let posFill = '';
-  let negFill = '';
-
-  for (const seg of segments) {
-    if (seg.pts.length < 2) continue;
-    const line = seg.pts.map(([x, yc], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${yc.toFixed(1)}`).join(' ');
-    if (seg.sign === 'pos') {
-      posLines.push(line);
-      const [sx] = seg.pts[0];
-      const [ex] = seg.pts[seg.pts.length - 1];
-      posFill += `${line} L${ex.toFixed(1)},${zeroY.toFixed(1)} L${sx.toFixed(1)},${zeroY.toFixed(1)} Z `;
-    } else if (seg.sign === 'neg') {
-      negLines.push(line);
-      const [sx] = seg.pts[0];
-      const [ex] = seg.pts[seg.pts.length - 1];
-      negFill += `${line} L${ex.toFixed(1)},${zeroY.toFixed(1)} L${sx.toFixed(1)},${zeroY.toFixed(1)} Z `;
-    }
-  }
-
-  return {
-    zeroY,
-    showZeroLine,
-    posLines,
-    negLines,
-    posFill: posFill.trim() || null,
-    negFill: negFill.trim() || null,
-  };
+  return { bars, todayX, maxSpend, spendDays };
 }
 
 const styles = StyleSheet.create({

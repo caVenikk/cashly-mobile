@@ -86,10 +86,17 @@ export const ru = {
   incomeRegular: 'Регулярные',
   incomeOneoff: 'Разовые',
   expectedMonth: 'Ожидается в этом месяце',
+  monthIncome: 'Доход за месяц',
+  incomeReceivedLabel: 'Получено',
+  incomeExpectedLabel: 'Ожидается',
   incomeName: 'Название',
   incomeNameHint: 'Например, зарплата',
   incomeKind: 'Тип',
   incomeNextDate: 'Следующее поступление',
+  incomeDate: 'Дата поступления',
+  incomeAlreadyReceived: 'Уже получен',
+  incomeReceive: 'Получить',
+  incomeReceived: 'Получено',
 
   // Envelopes
   envAll: 'Все',
@@ -116,6 +123,19 @@ export const ru = {
   envLimitLeft: 'Осталось',
   envLimitOver: 'Перерасход',
   envSelect: 'Из конверта',
+  envTarget: 'В конверт',
+
+  // Chart filter
+  chartFilter: 'Конверты на графике',
+  chartFilterAll: 'Все',
+  chartFilterNone: 'Ничего',
+
+  // History
+  historyTitle: 'История',
+  historyAll: 'Все',
+  historyExpenses: 'Расходы',
+  historyIncomes: 'Доходы',
+  historyEmpty: 'Пока нет операций',
   envNewTitle: 'Новый конверт',
   envNewName: 'Название',
   envNewEmoji: 'Эмодзи',
