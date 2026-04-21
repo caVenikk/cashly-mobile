@@ -33,7 +33,7 @@ export function QuickActions({ onGoTo }: { onGoTo: (name: 'plans' | 'envelopes' 
       key: 'move',
       label: t('envMove'),
       color: CashlyTheme.accent.blue,
-      icon: 'send',
+      icon: 'stack',
       onPress: () => uiStore.openAllocate(null),
     },
     { key: 'plans', label: t('plans'), color: CashlyTheme.accent.pink, icon: 'target', onPress: () => onGoTo('plans') },

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -31,8 +31,7 @@ export function HomeScreen() {
   const { refresh: refreshEnv } = useEnvelopes();
 
   const { refreshing, onRefresh } = useRefresh([refreshExp, refreshInc, refreshRec, refreshCat, refreshEnv]);
-  const scrollRef = useRef<ScrollView>(null);
-  useWebPullToRefresh(scrollRef, onRefresh);
+  useWebPullToRefresh(onRefresh);
 
   const onGoTo = useCallback(
     (name: 'plans' | 'envelopes' | 'recurring') => {
@@ -53,7 +52,6 @@ export function HomeScreen() {
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
       <ScrollView
-        ref={scrollRef}
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"

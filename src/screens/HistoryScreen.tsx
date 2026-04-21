@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -37,8 +37,7 @@ export function HistoryScreen() {
   const { envelopes } = useEnvelopes();
   const [filter, setFilter] = useState<FilterMode>('all');
   const { refreshing, onRefresh } = useRefresh([refreshExp, refreshInc, refreshCat]);
-  const scrollRef = useRef<ScrollView>(null);
-  useWebPullToRefresh(scrollRef, onRefresh);
+  useWebPullToRefresh(onRefresh);
 
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
@@ -92,7 +91,6 @@ export function HistoryScreen() {
       </View>
 
       <ScrollView
-        ref={scrollRef}
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
         refreshControl={

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaBottom } from '@/src/hooks/useSafeAreaBottom';
 import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
@@ -47,10 +47,12 @@ const SPRING_MASS = 0.6;
 export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const { dark, tokens } = useTokens();
   const t = useT();
-  const insets = useSafeAreaInsets();
   // Respect the iOS home-indicator gap on PWA standalone and new iPhones;
   // keep a 16px floor for devices without a bottom inset (Android, older iOS).
-  const bottomOffset = Math.max(16, insets.bottom + 4);
+  // useSafeAreaBottom reads env(safe-area-inset-bottom) on web where the RN
+  // provider always reports 0.
+  const bottomInset = useSafeAreaBottom();
+  const bottomOffset = Math.max(16, bottomInset + 4);
   const textOff = dark ? 'rgba(235,235,245,0.5)' : 'rgba(60,60,67,0.55)';
   const accent = CashlyTheme.accent.income;
 

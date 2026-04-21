@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRefresh } from '@/src/hooks/useRefresh';
@@ -31,8 +31,7 @@ export function RecurringScreen() {
   const { categories, refresh: refreshCat } = useCategories();
   const [filter, setFilter] = useState<Filter>('all');
   const { refreshing, onRefresh } = useRefresh([refreshRec, refreshCat]);
-  const scrollRef = useRef<ScrollView>(null);
-  useWebPullToRefresh(scrollRef, onRefresh);
+  useWebPullToRefresh(onRefresh);
 
   const active = recurring.filter((r) => r.is_active);
   const paused = recurring.filter((r) => !r.is_active);
@@ -54,7 +53,6 @@ export function RecurringScreen() {
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
       <ScrollView
-        ref={scrollRef}
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"

@@ -42,6 +42,7 @@ export type IconName =
   | 'face'
   | 'scan'
   | 'send'
+  | 'stack'
   | 'triangleUp'
   | 'triangleDown';
 
@@ -386,6 +387,14 @@ export function Icon({ name, color = 'currentColor', size = 22 }: IconProps & { 
             strokeLinecap="round"
             strokeLinejoin="round"
           />
+        </Svg>
+      );
+    case 'stack':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <Rect x={4} y={15} width={16} height={4} rx={2} stroke={c} strokeWidth={1.8} />
+          <Rect x={4} y={10} width={16} height={4} rx={2} stroke={c} strokeWidth={1.8} />
+          <Rect x={4} y={5} width={16} height={4} rx={2} stroke={c} strokeWidth={1.8} />
         </Svg>
       );
     case 'triangleUp':

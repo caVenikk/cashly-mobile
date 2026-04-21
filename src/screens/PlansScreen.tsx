@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -50,8 +50,7 @@ export function PlansScreen() {
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const { refreshing, onRefresh } = useRefresh([refreshRec, refreshPl, refreshCat, refreshInc]);
-  const scrollRef = useRef<ScrollView>(null);
-  useWebPullToRefresh(scrollRef, onRefresh);
+  useWebPullToRefresh(onRefresh);
 
   const horizonEnd = useMemo(() => {
     const d = new Date(calendarMonth);
@@ -171,7 +170,6 @@ export function PlansScreen() {
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
       <ScrollView
-        ref={scrollRef}
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"

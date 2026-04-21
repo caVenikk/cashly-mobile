@@ -1,7 +1,7 @@
 // Minimal service worker — enables "install to home screen" as a PWA on iOS/Android.
 // Uses a network-first strategy with a runtime cache so the app works offline
 // after the first successful visit.
-const CACHE_NAME = 'cashly-v1';
+const CACHE_NAME = 'cashly-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
