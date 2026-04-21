@@ -1,39 +1,62 @@
-import { useMemo } from 'react';
-import { Platform, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
-import { Gesture, type PanGesture } from 'react-native-gesture-handler';
-import { runOnJS, useSharedValue } from 'react-native-reanimated';
+import { useCallback, useRef } from 'react';
+import { Platform, type GestureResponderEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
-type Result = {
-  gesture: PanGesture;
+// Pull-to-refresh that hooks into ScrollView via normal React event props:
+// onTouchStart/Move/End plus onScroll for position tracking. No window
+// listeners, no Gesture Handler — the returned object is spread onto the
+// ScrollView directly.
+//
+// Native is left untouched because RefreshControl already works there; the
+// handlers are still returned so the call site is cross-platform.
+type Handlers = {
+  scrollEventThrottle: number;
   onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  onTouchStart: (e: GestureResponderEvent) => void;
+  onTouchMove: (e: GestureResponderEvent) => void;
+  onTouchEnd: () => void;
+  onTouchCancel: () => void;
 };
 
-// Web-only pull-to-refresh via react-native-gesture-handler.
-// RNW's RefreshControl doesn't wire up a pull gesture, so we wrap the
-// ScrollView in a GestureDetector with a Pan that:
-//   * only becomes active on downward drags past activeOffsetY
-//   * tracks scrollY via a shared value written from onScroll
-//   * fires onRefresh on end if we were at the top and pulled past `threshold`
-// On native the gesture is disabled — RefreshControl already works there.
-export function usePullToRefresh(onRefresh: () => void | Promise<unknown>, threshold = 60): Result {
-  const scrollY = useSharedValue(0);
+export function usePullToRefresh(onRefresh: () => void | Promise<unknown>, threshold = 60): Handlers {
+  const startY = useRef<number | null>(null);
+  const distance = useRef(0);
+  const atTop = useRef(true);
 
-  const gesture = useMemo(() => {
-    return Gesture.Pan()
-      .enabled(Platform.OS === 'web')
-      .activeOffsetY([10, 9999])
-      .failOffsetY(-10)
-      .onEnd((e) => {
-        'worklet';
-        if (scrollY.value <= 0 && e.translationY > threshold) {
-          runOnJS(onRefresh)();
-        }
-      });
-  }, [onRefresh, threshold, scrollY]);
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    atTop.current = e.nativeEvent.contentOffset.y <= 0;
+  }, []);
 
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>): void => {
-    scrollY.value = e.nativeEvent.contentOffset.y;
+  const onTouchStart = useCallback((e: GestureResponderEvent) => {
+    if (Platform.OS !== 'web') return;
+    if (!atTop.current) {
+      startY.current = null;
+      return;
+    }
+    startY.current = e.nativeEvent.pageY;
+    distance.current = 0;
+  }, []);
+
+  const onTouchMove = useCallback((e: GestureResponderEvent) => {
+    if (Platform.OS !== 'web') return;
+    if (startY.current == null) return;
+    distance.current = e.nativeEvent.pageY - startY.current;
+  }, []);
+
+  const onTouchEnd = useCallback(() => {
+    if (Platform.OS !== 'web') return;
+    if (startY.current != null && distance.current > threshold) {
+      void onRefresh();
+    }
+    startY.current = null;
+    distance.current = 0;
+  }, [onRefresh, threshold]);
+
+  return {
+    scrollEventThrottle: 16,
+    onScroll,
+    onTouchStart,
+    onTouchMove,
+    onTouchEnd,
+    onTouchCancel: onTouchEnd,
   };
-
-  return { gesture, onScroll };
 }

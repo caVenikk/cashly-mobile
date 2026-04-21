@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { GlassCard } from '@/src/components/glass/GlassCard';
 import { CategoryBadge } from '@/src/components/glass/CategoryBadge';
@@ -51,7 +50,7 @@ export function PlansScreen() {
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const { refreshing, onRefresh } = useRefresh([refreshRec, refreshPl, refreshCat, refreshInc]);
-  const { gesture, onScroll } = usePullToRefresh(onRefresh);
+  const pull = usePullToRefresh(onRefresh);
 
   const horizonEnd = useMemo(() => {
     const d = new Date(calendarMonth);
@@ -170,230 +169,227 @@ export function PlansScreen() {
 
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
-      <GestureDetector gesture={gesture}>
-        <ScrollView
-          onScroll={onScroll}
-          scrollEventThrottle={16}
-          contentContainerStyle={{ paddingBottom: 140 }}
-          showsVerticalScrollIndicator={false}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={dark ? '#ffffff' : '#555555'}
-              colors={['#555555']}
-            />
-          }
+      <ScrollView
+        {...pull}
+        contentContainerStyle={{ paddingBottom: 140 }}
+        showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={dark ? '#ffffff' : '#555555'}
+            colors={['#555555']}
+          />
+        }
+      >
+        <View
+          style={{
+            paddingHorizontal: 20,
+            paddingVertical: 8,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
         >
-          <View
-            style={{
-              paddingHorizontal: 20,
-              paddingVertical: 8,
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+          <View>
+            <Text style={{ fontSize: 13, color: tokens.textSecondary, fontWeight: '500' }}>
+              {lang === 'ru' ? 'Календарь расходов' : 'Expense calendar'}
+            </Text>
+            <Text style={{ fontSize: 32, fontWeight: '800', color: tokens.text, letterSpacing: -0.8 }}>
+              {t('plansTitle')}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              uiStore.open('addPlanned');
             }}
+            style={styles.addBtn}
           >
-            <View>
-              <Text style={{ fontSize: 13, color: tokens.textSecondary, fontWeight: '500' }}>
-                {lang === 'ru' ? 'Календарь расходов' : 'Expense calendar'}
-              </Text>
-              <Text style={{ fontSize: 32, fontWeight: '800', color: tokens.text, letterSpacing: -0.8 }}>
-                {t('plansTitle')}
-              </Text>
+            <Icon name="plus" color="#fff" size={22} />
+          </Pressable>
+        </View>
+
+        <View style={{ marginHorizontal: 16, marginBottom: 12 }}>
+          <SegmentedControl<ViewMode>
+            options={[
+              { id: 'list', label: lang === 'ru' ? 'Список' : 'List' },
+              { id: 'calendar', label: lang === 'ru' ? 'Календарь' : 'Calendar' },
+            ]}
+            active={view}
+            onChange={(v) => {
+              setView(v);
+              if (v === 'list') setSelectedDay(null);
+            }}
+          />
+        </View>
+
+        {view === 'calendar' ? (
+          <GlassCard strong style={{ marginHorizontal: 16, marginBottom: 16 }}>
+            <View style={{ padding: 16 }}>
+              <MonthCalendar
+                month={calendarMonth}
+                events={calendarEvents}
+                onPrev={() => {
+                  setCalendarMonth((m) => {
+                    const d = new Date(m);
+                    d.setMonth(d.getMonth() - 1, 1);
+                    return d;
+                  });
+                  setSelectedDay(null);
+                }}
+                onNext={() => {
+                  setCalendarMonth((m) => {
+                    const d = new Date(m);
+                    d.setMonth(d.getMonth() + 1, 1);
+                    return d;
+                  });
+                  setSelectedDay(null);
+                }}
+                onToday={() => {
+                  setCalendarMonth(new Date());
+                  setSelectedDay(null);
+                }}
+                onSelectDay={(iso) => setSelectedDay(selectedDay === iso ? null : iso)}
+                selectedDay={selectedDay}
+              />
             </View>
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                uiStore.open('addPlanned');
-              }}
-              style={styles.addBtn}
-            >
-              <Icon name="plus" color="#fff" size={22} />
-            </Pressable>
-          </View>
+          </GlassCard>
+        ) : (
+          <GlassCard strong style={{ marginHorizontal: 16, marginBottom: 16 }}>
+            <View style={{ padding: 20 }}>
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: tokens.textTertiary,
+                  fontWeight: '600',
+                  letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {t('plansForMonth')}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 14, marginTop: 2, flexWrap: 'wrap' }}>
+                {totalIncoming > 0 ? (
+                  <Text
+                    style={{
+                      fontSize: 26,
+                      fontWeight: '800',
+                      color: CashlyTheme.accent.income,
+                      letterSpacing: -0.6,
+                    }}
+                  >
+                    + {fmt(totalIncoming, lang)}
+                  </Text>
+                ) : null}
+                {totalSpending > 0 ? (
+                  <Text
+                    style={{
+                      fontSize: 26,
+                      fontWeight: '800',
+                      color: CashlyTheme.accent.expense,
+                      letterSpacing: -0.6,
+                    }}
+                  >
+                    − {fmt(totalSpending, lang)}
+                  </Text>
+                ) : null}
+                {totalIncoming === 0 && totalSpending === 0 ? (
+                  <Text style={{ fontSize: 26, fontWeight: '800', color: tokens.text, letterSpacing: -0.6 }}>
+                    {fmt(0, lang)}
+                  </Text>
+                ) : null}
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                <Chip color={CashlyTheme.accent.income} icon="repeat" label={t('planRecurring')} value={recurCount} />
+                <Chip color={CashlyTheme.accent.purple} icon="flash" label={t('planOneOff')} value={oneoffCount} />
+              </View>
+            </View>
+          </GlassCard>
+        )}
 
-          <View style={{ marginHorizontal: 16, marginBottom: 12 }}>
-            <SegmentedControl<ViewMode>
-              options={[
-                { id: 'list', label: lang === 'ru' ? 'Список' : 'List' },
-                { id: 'calendar', label: lang === 'ru' ? 'Календарь' : 'Calendar' },
-              ]}
-              active={view}
-              onChange={(v) => {
-                setView(v);
-                if (v === 'list') setSelectedDay(null);
-              }}
-            />
-          </View>
+        <View style={{ marginHorizontal: 16, marginBottom: 14 }}>
+          <SegmentedControl<Filter>
+            options={[
+              { id: 'all', label: t('all') },
+              { id: 'recurring', label: t('planRecurring') },
+              { id: 'oneoff', label: t('planOneOff') },
+            ]}
+            active={filter}
+            onChange={setFilter}
+          />
+        </View>
 
+        <View style={{ paddingHorizontal: 16 }}>
           {view === 'calendar' ? (
-            <GlassCard strong style={{ marginHorizontal: 16, marginBottom: 16 }}>
-              <View style={{ padding: 16 }}>
-                <MonthCalendar
-                  month={calendarMonth}
-                  events={calendarEvents}
-                  onPrev={() => {
-                    setCalendarMonth((m) => {
-                      const d = new Date(m);
-                      d.setMonth(d.getMonth() - 1, 1);
-                      return d;
-                    });
-                    setSelectedDay(null);
-                  }}
-                  onNext={() => {
-                    setCalendarMonth((m) => {
-                      const d = new Date(m);
-                      d.setMonth(d.getMonth() + 1, 1);
-                      return d;
-                    });
-                    setSelectedDay(null);
-                  }}
-                  onToday={() => {
-                    setCalendarMonth(new Date());
-                    setSelectedDay(null);
-                  }}
-                  onSelectDay={(iso) => setSelectedDay(selectedDay === iso ? null : iso)}
-                  selectedDay={selectedDay}
-                />
-              </View>
-            </GlassCard>
+            <View>
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: '700',
+                  color: tokens.textTertiary,
+                  letterSpacing: 0.6,
+                  textTransform: 'uppercase',
+                  paddingHorizontal: 6,
+                  paddingBottom: 10,
+                }}
+              >
+                {selectedDay
+                  ? fmtDate(selectedDay, 'd MMMM yyyy', lang)
+                  : lang === 'ru'
+                    ? 'Все события месяца'
+                    : 'All events this month'}
+              </Text>
+              {monthList.length === 0 ? (
+                <GlassCard radius={22}>
+                  <View style={{ padding: 28, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 13, color: tokens.textSecondary }}>{t('emptyPlanned')}</Text>
+                  </View>
+                </GlassCard>
+              ) : (
+                <GlassCard radius={22}>
+                  {monthList.map((e, i) => (
+                    <PlanRow
+                      key={e.id}
+                      e={e}
+                      isLast={i === monthList.length - 1}
+                      category={catById(categories, e.categoryId)}
+                    />
+                  ))}
+                </GlassCard>
+              )}
+            </View>
           ) : (
-            <GlassCard strong style={{ marginHorizontal: 16, marginBottom: 16 }}>
-              <View style={{ padding: 20 }}>
-                <Text
-                  style={{
-                    fontSize: 11,
-                    color: tokens.textTertiary,
-                    fontWeight: '600',
-                    letterSpacing: 0.4,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {t('plansForMonth')}
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 14, marginTop: 2, flexWrap: 'wrap' }}>
-                  {totalIncoming > 0 ? (
-                    <Text
-                      style={{
-                        fontSize: 26,
-                        fontWeight: '800',
-                        color: CashlyTheme.accent.income,
-                        letterSpacing: -0.6,
-                      }}
-                    >
-                      + {fmt(totalIncoming, lang)}
-                    </Text>
-                  ) : null}
-                  {totalSpending > 0 ? (
-                    <Text
-                      style={{
-                        fontSize: 26,
-                        fontWeight: '800',
-                        color: CashlyTheme.accent.expense,
-                        letterSpacing: -0.6,
-                      }}
-                    >
-                      − {fmt(totalSpending, lang)}
-                    </Text>
-                  ) : null}
-                  {totalIncoming === 0 && totalSpending === 0 ? (
-                    <Text style={{ fontSize: 26, fontWeight: '800', color: tokens.text, letterSpacing: -0.6 }}>
-                      {fmt(0, lang)}
-                    </Text>
-                  ) : null}
-                </View>
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                  <Chip color={CashlyTheme.accent.income} icon="repeat" label={t('planRecurring')} value={recurCount} />
-                  <Chip color={CashlyTheme.accent.purple} icon="flash" label={t('planOneOff')} value={oneoffCount} />
-                </View>
-              </View>
-            </GlassCard>
+            <>
+              {thisWeek.length > 0 ? (
+                <PlanGroup
+                  title={t('planThisWeek')}
+                  entries={thisWeek}
+                  accent={CashlyTheme.accent.expense}
+                  categories={categories}
+                />
+              ) : null}
+              {later.length > 0 ? (
+                <PlanGroup
+                  title={t('planLater')}
+                  entries={later}
+                  accent={tokens.textSecondary}
+                  categories={categories}
+                />
+              ) : null}
+              {forList.length === 0 ? (
+                <GlassCard radius={22}>
+                  <View style={{ padding: 28, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 13, color: tokens.textSecondary }}>{t('emptyPlanned')}</Text>
+                  </View>
+                </GlassCard>
+              ) : null}
+            </>
           )}
-
-          <View style={{ marginHorizontal: 16, marginBottom: 14 }}>
-            <SegmentedControl<Filter>
-              options={[
-                { id: 'all', label: t('all') },
-                { id: 'recurring', label: t('planRecurring') },
-                { id: 'oneoff', label: t('planOneOff') },
-              ]}
-              active={filter}
-              onChange={setFilter}
-            />
-          </View>
-
-          <View style={{ paddingHorizontal: 16 }}>
-            {view === 'calendar' ? (
-              <View>
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: '700',
-                    color: tokens.textTertiary,
-                    letterSpacing: 0.6,
-                    textTransform: 'uppercase',
-                    paddingHorizontal: 6,
-                    paddingBottom: 10,
-                  }}
-                >
-                  {selectedDay
-                    ? fmtDate(selectedDay, 'd MMMM yyyy', lang)
-                    : lang === 'ru'
-                      ? 'Все события месяца'
-                      : 'All events this month'}
-                </Text>
-                {monthList.length === 0 ? (
-                  <GlassCard radius={22}>
-                    <View style={{ padding: 28, alignItems: 'center' }}>
-                      <Text style={{ fontSize: 13, color: tokens.textSecondary }}>{t('emptyPlanned')}</Text>
-                    </View>
-                  </GlassCard>
-                ) : (
-                  <GlassCard radius={22}>
-                    {monthList.map((e, i) => (
-                      <PlanRow
-                        key={e.id}
-                        e={e}
-                        isLast={i === monthList.length - 1}
-                        category={catById(categories, e.categoryId)}
-                      />
-                    ))}
-                  </GlassCard>
-                )}
-              </View>
-            ) : (
-              <>
-                {thisWeek.length > 0 ? (
-                  <PlanGroup
-                    title={t('planThisWeek')}
-                    entries={thisWeek}
-                    accent={CashlyTheme.accent.expense}
-                    categories={categories}
-                  />
-                ) : null}
-                {later.length > 0 ? (
-                  <PlanGroup
-                    title={t('planLater')}
-                    entries={later}
-                    accent={tokens.textSecondary}
-                    categories={categories}
-                  />
-                ) : null}
-                {forList.length === 0 ? (
-                  <GlassCard radius={22}>
-                    <View style={{ padding: 28, alignItems: 'center' }}>
-                      <Text style={{ fontSize: 13, color: tokens.textSecondary }}>{t('emptyPlanned')}</Text>
-                    </View>
-                  </GlassCard>
-                ) : null}
-              </>
-            )}
-          </View>
-        </ScrollView>
-      </GestureDetector>
+        </View>
+      </ScrollView>
     </View>
   );
 }

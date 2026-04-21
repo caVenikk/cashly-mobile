@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GestureDetector } from 'react-native-gesture-handler';
 import { useRefresh } from '@/src/hooks/useRefresh';
 import { usePullToRefresh } from '@/src/hooks/usePullToRefresh';
 import * as Haptics from 'expo-haptics';
@@ -32,7 +31,7 @@ export function RecurringScreen() {
   const { categories, refresh: refreshCat } = useCategories();
   const [filter, setFilter] = useState<Filter>('all');
   const { refreshing, onRefresh } = useRefresh([refreshRec, refreshCat]);
-  const { gesture, onScroll } = usePullToRefresh(onRefresh);
+  const pull = usePullToRefresh(onRefresh);
 
   const active = recurring.filter((r) => r.is_active);
   const paused = recurring.filter((r) => !r.is_active);
@@ -53,190 +52,187 @@ export function RecurringScreen() {
 
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
-      <GestureDetector gesture={gesture}>
-        <ScrollView
-          onScroll={onScroll}
-          scrollEventThrottle={16}
-          contentContainerStyle={{ paddingBottom: 140 }}
-          showsVerticalScrollIndicator={false}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={dark ? '#ffffff' : '#555555'}
-              colors={['#555555']}
-            />
-          }
-        >
-          <View style={{ paddingHorizontal: 20, paddingVertical: 8 }}>
-            <Text style={{ fontSize: 13, color: tokens.textSecondary, fontWeight: '500' }}>
-              {fmtDateObj(new Date(), 'LLLL yyyy', lang)}
+      <ScrollView
+        {...pull}
+        contentContainerStyle={{ paddingBottom: 140 }}
+        showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={dark ? '#ffffff' : '#555555'}
+            colors={['#555555']}
+          />
+        }
+      >
+        <View style={{ paddingHorizontal: 20, paddingVertical: 8 }}>
+          <Text style={{ fontSize: 13, color: tokens.textSecondary, fontWeight: '500' }}>
+            {fmtDateObj(new Date(), 'LLLL yyyy', lang)}
+          </Text>
+          <View style={styles.titleRow}>
+            <Text style={{ fontSize: 32, fontWeight: '800', color: tokens.text, letterSpacing: -0.8 }}>
+              {t('recurringTitle')}
             </Text>
-            <View style={styles.titleRow}>
-              <Text style={{ fontSize: 32, fontWeight: '800', color: tokens.text, letterSpacing: -0.8 }}>
-                {t('recurringTitle')}
-              </Text>
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  uiStore.open('addRecurring');
-                }}
-                style={styles.addBtn}
-              >
-                <Icon name="plus" color="#fff" size={22} />
-              </Pressable>
-            </View>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                uiStore.open('addRecurring');
+              }}
+              style={styles.addBtn}
+            >
+              <Icon name="plus" color="#fff" size={22} />
+            </Pressable>
           </View>
+        </View>
 
-          <GlassCard strong style={{ marginHorizontal: 16 }}>
-            <View style={{ padding: 20 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
-                <View>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: tokens.textTertiary,
-                      fontWeight: '600',
-                      letterSpacing: 0.4,
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {t('monthlyTotal')}
-                  </Text>
-                  <Text
-                    style={{ fontSize: 28, fontWeight: '800', color: tokens.text, letterSpacing: -0.8, marginTop: 2 }}
-                  >
-                    {fmt(monthlyTotal, lang)}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: tokens.textSecondary, marginTop: 2 }}>
-                    ≈ {fmt(yearTotal, lang)} / {t('yearTotal')}
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                  <Chip
-                    text={`${active.length} ${t('active').toLowerCase()}`}
-                    bg={alpha(CashlyTheme.accent.income, 0.18)}
-                    color={CashlyTheme.accent.income}
-                  />
-                  {paused.length > 0 ? (
-                    <Chip
-                      text={`${paused.length} ${t('paused').toLowerCase()}`}
-                      bg={dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}
-                      color={tokens.textSecondary}
-                    />
-                  ) : null}
-                </View>
-              </View>
-
-              <View style={{ marginTop: 18 }}>
+        <GlassCard strong style={{ marginHorizontal: 16 }}>
+          <View style={{ padding: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+              <View>
                 <Text
                   style={{
                     fontSize: 11,
-                    fontWeight: '600',
                     color: tokens.textTertiary,
+                    fontWeight: '600',
                     letterSpacing: 0.4,
                     textTransform: 'uppercase',
-                    marginBottom: 10,
                   }}
                 >
-                  {t('next14')}
+                  {t('monthlyTotal')}
                 </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    {days.map(({ d, events, idx }) => {
-                      const isToday = idx === 0;
-                      return (
-                        <View key={idx} style={{ width: 42, alignItems: 'center', gap: 4 }}>
-                          <Text style={{ fontSize: 10, color: tokens.textTertiary, fontWeight: '600' }}>
-                            {fmtDateObj(d, 'EEEEEE', lang).slice(0, 2)}
-                          </Text>
-                          <View
-                            style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: 10,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              backgroundColor: isToday
-                                ? CashlyTheme.accent.income
-                                : events.length > 0
-                                  ? dark
-                                    ? 'rgba(255,255,255,0.1)'
-                                    : 'rgba(0,0,0,0.06)'
-                                  : 'transparent',
-                              borderWidth: events.length > 0 && !isToday ? 1.5 : 0,
-                              borderColor:
-                                events.length > 0 && !isToday
-                                  ? catById(categories, events[0].category_id).color
-                                  : 'transparent',
-                            }}
-                          >
-                            <Text style={{ fontSize: 14, fontWeight: '600', color: isToday ? '#fff' : tokens.text }}>
-                              {d.getDate()}
-                            </Text>
-                          </View>
-                          <View style={{ height: 4, flexDirection: 'row', gap: 2 }}>
-                            {events.slice(0, 3).map((e, i) => (
-                              <View
-                                key={i}
-                                style={{
-                                  width: 4,
-                                  height: 4,
-                                  borderRadius: 2,
-                                  backgroundColor: catById(categories, e.category_id).color,
-                                }}
-                              />
-                            ))}
-                          </View>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </ScrollView>
+                <Text
+                  style={{ fontSize: 28, fontWeight: '800', color: tokens.text, letterSpacing: -0.8, marginTop: 2 }}
+                >
+                  {fmt(monthlyTotal, lang)}
+                </Text>
+                <Text style={{ fontSize: 12, color: tokens.textSecondary, marginTop: 2 }}>
+                  ≈ {fmt(yearTotal, lang)} / {t('yearTotal')}
+                </Text>
+              </View>
+              <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                <Chip
+                  text={`${active.length} ${t('active').toLowerCase()}`}
+                  bg={alpha(CashlyTheme.accent.income, 0.18)}
+                  color={CashlyTheme.accent.income}
+                />
+                {paused.length > 0 ? (
+                  <Chip
+                    text={`${paused.length} ${t('paused').toLowerCase()}`}
+                    bg={dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}
+                    color={tokens.textSecondary}
+                  />
+                ) : null}
               </View>
             </View>
-          </GlassCard>
 
-          <View style={{ marginHorizontal: 16, marginTop: 18, marginBottom: 10 }}>
-            <SegmentedControl<Filter>
-              options={[
-                { id: 'all', label: t('all') },
-                { id: 'active', label: t('allActive') },
-                { id: 'paused', label: t('paused_plural') },
-              ]}
-              active={filter}
-              onChange={setFilter}
-            />
-          </View>
-
-          <View style={{ marginHorizontal: 16 }}>
-            {shown.length === 0 ? (
-              <GlassCard radius={22}>
-                <View style={{ padding: 28, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: tokens.textSecondary }}>{t('emptyRecurring')}</Text>
+            <View style={{ marginTop: 18 }}>
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: '600',
+                  color: tokens.textTertiary,
+                  letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                  marginBottom: 10,
+                }}
+              >
+                {t('next14')}
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  {days.map(({ d, events, idx }) => {
+                    const isToday = idx === 0;
+                    return (
+                      <View key={idx} style={{ width: 42, alignItems: 'center', gap: 4 }}>
+                        <Text style={{ fontSize: 10, color: tokens.textTertiary, fontWeight: '600' }}>
+                          {fmtDateObj(d, 'EEEEEE', lang).slice(0, 2)}
+                        </Text>
+                        <View
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 10,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: isToday
+                              ? CashlyTheme.accent.income
+                              : events.length > 0
+                                ? dark
+                                  ? 'rgba(255,255,255,0.1)'
+                                  : 'rgba(0,0,0,0.06)'
+                                : 'transparent',
+                            borderWidth: events.length > 0 && !isToday ? 1.5 : 0,
+                            borderColor:
+                              events.length > 0 && !isToday
+                                ? catById(categories, events[0].category_id).color
+                                : 'transparent',
+                          }}
+                        >
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: isToday ? '#fff' : tokens.text }}>
+                            {d.getDate()}
+                          </Text>
+                        </View>
+                        <View style={{ height: 4, flexDirection: 'row', gap: 2 }}>
+                          {events.slice(0, 3).map((e, i) => (
+                            <View
+                              key={i}
+                              style={{
+                                width: 4,
+                                height: 4,
+                                borderRadius: 2,
+                                backgroundColor: catById(categories, e.category_id).color,
+                              }}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
-              </GlassCard>
-            ) : (
-              <GlassCard radius={22}>
-                {shown.map((r, i) => (
-                  <RecurringRow
-                    key={r.id}
-                    item={r}
-                    isLast={i === shown.length - 1}
-                    onToggle={() => toggle(r.id, !r.is_active)}
-                    onDelete={() => remove(r.id)}
-                    onPay={() => pay(r)}
-                    categoryColor={catById(categories, r.category_id).color}
-                    categoryIcon={catById(categories, r.category_id).icon}
-                  />
-                ))}
-              </GlassCard>
-            )}
+              </ScrollView>
+            </View>
           </View>
-        </ScrollView>
-      </GestureDetector>
+        </GlassCard>
+
+        <View style={{ marginHorizontal: 16, marginTop: 18, marginBottom: 10 }}>
+          <SegmentedControl<Filter>
+            options={[
+              { id: 'all', label: t('all') },
+              { id: 'active', label: t('allActive') },
+              { id: 'paused', label: t('paused_plural') },
+            ]}
+            active={filter}
+            onChange={setFilter}
+          />
+        </View>
+
+        <View style={{ marginHorizontal: 16 }}>
+          {shown.length === 0 ? (
+            <GlassCard radius={22}>
+              <View style={{ padding: 28, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: tokens.textSecondary }}>{t('emptyRecurring')}</Text>
+              </View>
+            </GlassCard>
+          ) : (
+            <GlassCard radius={22}>
+              {shown.map((r, i) => (
+                <RecurringRow
+                  key={r.id}
+                  item={r}
+                  isLast={i === shown.length - 1}
+                  onToggle={() => toggle(r.id, !r.is_active)}
+                  onDelete={() => remove(r.id)}
+                  onPay={() => pay(r)}
+                  categoryColor={catById(categories, r.category_id).color}
+                  categoryIcon={catById(categories, r.category_id).icon}
+                />
+              ))}
+            </GlassCard>
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 }

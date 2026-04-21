@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GestureDetector } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { GlassCard } from '@/src/components/glass/GlassCard';
@@ -38,7 +37,7 @@ export function HistoryScreen() {
   const { envelopes } = useEnvelopes();
   const [filter, setFilter] = useState<FilterMode>('all');
   const { refreshing, onRefresh } = useRefresh([refreshExp, refreshInc, refreshCat]);
-  const { gesture, onScroll } = usePullToRefresh(onRefresh);
+  const pull = usePullToRefresh(onRefresh);
 
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
@@ -91,132 +90,129 @@ export function HistoryScreen() {
         </Text>
       </View>
 
-      <GestureDetector gesture={gesture}>
-        <ScrollView
-          onScroll={onScroll}
-          scrollEventThrottle={16}
-          contentContainerStyle={{ paddingBottom: 140 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={dark ? '#ffffff' : '#555555'}
-              colors={['#555555']}
-            />
-          }
-        >
-          <GlassCard strong style={{ marginHorizontal: 16, marginTop: 8 }}>
-            <View style={{ padding: 18 }}>
-              <View style={{ flexDirection: 'row', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                {total.inSum > 0 ? (
-                  <Text
-                    style={{
-                      fontSize: 22,
-                      fontWeight: '800',
-                      color: CashlyTheme.accent.income,
-                      letterSpacing: -0.5,
-                    }}
-                  >
-                    + {fmt(total.inSum, lang)}
-                  </Text>
-                ) : null}
-                {total.outSum > 0 ? (
-                  <Text
-                    style={{
-                      fontSize: 22,
-                      fontWeight: '800',
-                      color: CashlyTheme.accent.expense,
-                      letterSpacing: -0.5,
-                    }}
-                  >
-                    − {fmt(total.outSum, lang)}
-                  </Text>
-                ) : null}
-                {total.inSum === 0 && total.outSum === 0 ? (
-                  <Text style={{ fontSize: 22, fontWeight: '800', color: tokens.textSecondary, letterSpacing: -0.5 }}>
-                    {fmt(0, lang)}
-                  </Text>
-                ) : null}
-              </View>
-              <Text style={{ fontSize: 11, color: tokens.textTertiary, marginTop: 4, fontWeight: '500' }}>
-                {items.length} {lang === 'ru' ? 'операций' : 'operations'}
-              </Text>
+      <ScrollView
+        {...pull}
+        contentContainerStyle={{ paddingBottom: 140 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={dark ? '#ffffff' : '#555555'}
+            colors={['#555555']}
+          />
+        }
+      >
+        <GlassCard strong style={{ marginHorizontal: 16, marginTop: 8 }}>
+          <View style={{ padding: 18 }}>
+            <View style={{ flexDirection: 'row', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
+              {total.inSum > 0 ? (
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: '800',
+                    color: CashlyTheme.accent.income,
+                    letterSpacing: -0.5,
+                  }}
+                >
+                  + {fmt(total.inSum, lang)}
+                </Text>
+              ) : null}
+              {total.outSum > 0 ? (
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: '800',
+                    color: CashlyTheme.accent.expense,
+                    letterSpacing: -0.5,
+                  }}
+                >
+                  − {fmt(total.outSum, lang)}
+                </Text>
+              ) : null}
+              {total.inSum === 0 && total.outSum === 0 ? (
+                <Text style={{ fontSize: 22, fontWeight: '800', color: tokens.textSecondary, letterSpacing: -0.5 }}>
+                  {fmt(0, lang)}
+                </Text>
+              ) : null}
             </View>
-          </GlassCard>
-
-          <View style={{ marginHorizontal: 16, marginTop: 14, marginBottom: 10 }}>
-            <SegmentedControl<FilterMode>
-              options={[
-                { id: 'all', label: t('historyAll') },
-                { id: 'expense', label: t('historyExpenses') },
-                { id: 'income', label: t('historyIncomes') },
-              ]}
-              active={filter}
-              onChange={setFilter}
-            />
+            <Text style={{ fontSize: 11, color: tokens.textTertiary, marginTop: 4, fontWeight: '500' }}>
+              {items.length} {lang === 'ru' ? 'операций' : 'operations'}
+            </Text>
           </View>
+        </GlassCard>
 
-          {grouped.length === 0 ? (
-            <View style={{ marginHorizontal: 16 }}>
-              <GlassCard radius={22}>
-                <View style={{ padding: 28, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: tokens.textSecondary }}>{t('historyEmpty')}</Text>
-                </View>
-              </GlassCard>
-            </View>
-          ) : (
-            grouped.map((g) => {
-              const label =
-                g.key === today ? t('today') : g.key === yIso ? t('yesterday') : fmtDate(g.key, 'd MMMM yyyy', lang);
-              return (
-                <View key={g.key} style={{ marginHorizontal: 16, marginBottom: 14 }}>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      fontWeight: '600',
-                      color: tokens.textTertiary,
-                      letterSpacing: 0.5,
-                      textTransform: 'uppercase',
-                      paddingHorizontal: 6,
-                      paddingBottom: 6,
-                    }}
-                  >
-                    {label}
-                  </Text>
-                  <GlassCard radius={22}>
-                    {g.rows.map((it, i) => {
-                      const isLast = i === g.rows.length - 1;
-                      if (it.kind === 'expense') {
-                        return (
-                          <TxRow
-                            key={`e:${it.data.id}`}
-                            tx={it.data}
-                            categories={categories}
-                            isLast={isLast}
-                            onDelete={(id) => removeExp(id)}
-                          />
-                        );
-                      }
-                      const env = envelopes.find((e) => e.id === it.data.envelope_id) ?? null;
+        <View style={{ marginHorizontal: 16, marginTop: 14, marginBottom: 10 }}>
+          <SegmentedControl<FilterMode>
+            options={[
+              { id: 'all', label: t('historyAll') },
+              { id: 'expense', label: t('historyExpenses') },
+              { id: 'income', label: t('historyIncomes') },
+            ]}
+            active={filter}
+            onChange={setFilter}
+          />
+        </View>
+
+        {grouped.length === 0 ? (
+          <View style={{ marginHorizontal: 16 }}>
+            <GlassCard radius={22}>
+              <View style={{ padding: 28, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: tokens.textSecondary }}>{t('historyEmpty')}</Text>
+              </View>
+            </GlassCard>
+          </View>
+        ) : (
+          grouped.map((g) => {
+            const label =
+              g.key === today ? t('today') : g.key === yIso ? t('yesterday') : fmtDate(g.key, 'd MMMM yyyy', lang);
+            return (
+              <View key={g.key} style={{ marginHorizontal: 16, marginBottom: 14 }}>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    color: tokens.textTertiary,
+                    letterSpacing: 0.5,
+                    textTransform: 'uppercase',
+                    paddingHorizontal: 6,
+                    paddingBottom: 6,
+                  }}
+                >
+                  {label}
+                </Text>
+                <GlassCard radius={22}>
+                  {g.rows.map((it, i) => {
+                    const isLast = i === g.rows.length - 1;
+                    if (it.kind === 'expense') {
                       return (
-                        <IncomeHistoryRow
-                          key={`i:${it.data.id}`}
-                          inc={it.data}
-                          envelopeEmoji={env?.emoji ?? '💳'}
-                          envelopeName={env?.name ?? '—'}
+                        <TxRow
+                          key={`e:${it.data.id}`}
+                          tx={it.data}
+                          categories={categories}
                           isLast={isLast}
-                          onDelete={() => removeInc(it.data.id)}
+                          onDelete={(id) => removeExp(id)}
                         />
                       );
-                    })}
-                  </GlassCard>
-                </View>
-              );
-            })
-          )}
-        </ScrollView>
-      </GestureDetector>
+                    }
+                    const env = envelopes.find((e) => e.id === it.data.envelope_id) ?? null;
+                    return (
+                      <IncomeHistoryRow
+                        key={`i:${it.data.id}`}
+                        inc={it.data}
+                        envelopeEmoji={env?.emoji ?? '💳'}
+                        envelopeName={env?.name ?? '—'}
+                        isLast={isLast}
+                        onDelete={() => removeInc(it.data.id)}
+                      />
+                    );
+                  })}
+                </GlassCard>
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
     </View>
   );
 }

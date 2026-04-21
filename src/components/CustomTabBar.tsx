@@ -3,7 +3,6 @@ import { Platform, View, Text, StyleSheet, type LayoutChangeEvent } from 'react-
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
@@ -47,15 +46,10 @@ const SPRING_MASS = 0.6;
 export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const { dark, tokens } = useTokens();
   const t = useT();
-  // On web the CSS variable `--cashly-sab` (declared in +html.tsx) carries
-  // env(safe-area-inset-bottom), so the position reacts to the iOS home
-  // indicator through pure CSS — no listeners, no runtime measurement. On
-  // native we use the provider value.
-  const insets = useSafeAreaInsets();
-  const bottomStyle =
-    Platform.OS === 'web'
-      ? { bottom: 'calc(var(--cashly-sab, 0px) + 8px)' as unknown as number }
-      : { bottom: Math.max(8, insets.bottom) };
+  // Sit close to the bottom edge on both platforms. The iOS home indicator
+  // draws on top of whatever content is underneath, so overlapping it is OK
+  // and avoids the "empty zone" below the bar that a safe-area offset adds.
+  const bottomStyle = { bottom: Platform.OS === 'web' ? 10 : 26 };
   const textOff = dark ? 'rgba(235,235,245,0.5)' : 'rgba(60,60,67,0.55)';
   const accent = CashlyTheme.accent.income;
 

@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GestureDetector } from 'react-native-gesture-handler';
 import { useRefresh } from '@/src/hooks/useRefresh';
 import { usePullToRefresh } from '@/src/hooks/usePullToRefresh';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,7 +26,7 @@ export function EnvelopesScreen() {
   const { envelopes, refresh: refreshEnv } = useEnvelopes();
   const [tab, setTab] = useState<Tab>('all');
   const { refreshing, onRefresh } = useRefresh([refreshEnv]);
-  const { gesture, onScroll } = usePullToRefresh(onRefresh);
+  const pull = usePullToRefresh(onRefresh);
 
   const main = envelopes.find((e) => e.kind === 'main');
   const others = envelopes.filter((e) => e.kind !== 'main');
@@ -42,192 +41,189 @@ export function EnvelopesScreen() {
 
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
-      <GestureDetector gesture={gesture}>
-        <ScrollView
-          onScroll={onScroll}
-          scrollEventThrottle={16}
-          contentContainerStyle={{ paddingBottom: 140 }}
-          showsVerticalScrollIndicator={false}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={dark ? '#ffffff' : '#555555'}
-              colors={['#555555']}
-            />
-          }
-        >
-          <View style={{ paddingHorizontal: 20, paddingVertical: 8 }}>
-            <Text style={{ fontSize: 13, color: tokens.textSecondary, fontWeight: '500' }}>{t('envDivide')}</Text>
-            <View style={styles.titleRow}>
-              <Text style={{ fontSize: 32, fontWeight: '800', color: tokens.text, letterSpacing: -0.8 }}>
-                {t('envelopes')}
-              </Text>
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  uiStore.open('addEnvelope');
+      <ScrollView
+        {...pull}
+        contentContainerStyle={{ paddingBottom: 140 }}
+        showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={dark ? '#ffffff' : '#555555'}
+            colors={['#555555']}
+          />
+        }
+      >
+        <View style={{ paddingHorizontal: 20, paddingVertical: 8 }}>
+          <Text style={{ fontSize: 13, color: tokens.textSecondary, fontWeight: '500' }}>{t('envDivide')}</Text>
+          <View style={styles.titleRow}>
+            <Text style={{ fontSize: 32, fontWeight: '800', color: tokens.text, letterSpacing: -0.8 }}>
+              {t('envelopes')}
+            </Text>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                uiStore.open('addEnvelope');
+              }}
+              style={styles.addBtn}
+            >
+              <Icon name="plus" color="#fff" size={22} />
+            </Pressable>
+          </View>
+        </View>
+
+        <GlassCard strong style={{ marginHorizontal: 16, marginBottom: 18 }}>
+          <View style={{ padding: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: '600',
+                  color: tokens.textTertiary,
+                  letterSpacing: 0.4,
+                  textTransform: 'uppercase',
                 }}
-                style={styles.addBtn}
               >
-                <Icon name="plus" color="#fff" size={22} />
+                {t('envAllTotal')}
+              </Text>
+              <Pressable onPress={() => uiStore.openAllocate(null)}>
+                <LinearGradient
+                  colors={[CashlyTheme.accent.purple, shade(CashlyTheme.accent.purple, -15)]}
+                  start={{ x: 0.1, y: 0 }}
+                  end={{ x: 0.9, y: 1 }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    borderRadius: 14,
+                  }}
+                >
+                  <Icon name="plus" color="#fff" size={13} />
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('envMove')}</Text>
+                </LinearGradient>
               </Pressable>
             </View>
-          </View>
+            <Text style={{ fontSize: 34, fontWeight: '800', color: tokens.text, letterSpacing: -1, marginTop: 2 }}>
+              {fmt(total, lang)}
+            </Text>
 
-          <GlassCard strong style={{ marginHorizontal: 16, marginBottom: 18 }}>
-            <View style={{ padding: 20 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text
+            <View
+              style={{
+                height: 10,
+                borderRadius: 5,
+                overflow: 'hidden',
+                marginTop: 14,
+                flexDirection: 'row',
+                backgroundColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+              }}
+            >
+              {main ? (
+                <View
                   style={{
-                    fontSize: 11,
-                    fontWeight: '600',
-                    color: tokens.textTertiary,
-                    letterSpacing: 0.4,
-                    textTransform: 'uppercase',
+                    width: `${total > 0 ? Math.round((Number(main.balance) / total) * 100) : 0}%`,
+                    backgroundColor: CashlyTheme.accent.blue,
                   }}
-                >
-                  {t('envAllTotal')}
-                </Text>
-                <Pressable onPress={() => uiStore.openAllocate(null)}>
-                  <LinearGradient
-                    colors={[CashlyTheme.accent.purple, shade(CashlyTheme.accent.purple, -15)]}
-                    start={{ x: 0.1, y: 0 }}
-                    end={{ x: 0.9, y: 1 }}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      paddingVertical: 6,
-                      paddingHorizontal: 12,
-                      borderRadius: 14,
-                    }}
-                  >
-                    <Icon name="plus" color="#fff" size={13} />
-                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('envMove')}</Text>
-                  </LinearGradient>
-                </Pressable>
-              </View>
-              <Text style={{ fontSize: 34, fontWeight: '800', color: tokens.text, letterSpacing: -1, marginTop: 2 }}>
-                {fmt(total, lang)}
-              </Text>
-
-              <View
-                style={{
-                  height: 10,
-                  borderRadius: 5,
-                  overflow: 'hidden',
-                  marginTop: 14,
-                  flexDirection: 'row',
-                  backgroundColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
-                }}
-              >
-                {main ? (
-                  <View
-                    style={{
-                      width: `${total > 0 ? Math.round((Number(main.balance) / total) * 100) : 0}%`,
-                      backgroundColor: CashlyTheme.accent.blue,
-                    }}
-                  />
-                ) : null}
-                {others.map((e) => (
-                  <View
-                    key={e.id}
-                    style={{
-                      width: `${total > 0 ? (Number(e.balance) / total) * 100 : 0}%`,
-                      backgroundColor: e.color,
-                    }}
-                  />
-                ))}
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 16, marginTop: 12 }}>
-                <SumStat
-                  color={CashlyTheme.accent.blue}
-                  label={t('envAvailable')}
-                  value={fmt(main ? Number(main.balance) : 0, lang)}
-                  small={t('envMain')}
                 />
-                <SumStat
-                  color={CashlyTheme.accent.purple}
-                  label={t('envAllocated')}
-                  value={fmt(allocated, lang)}
-                  small={`${others.length} ${t('envCount')}`}
-                />
-              </View>
-            </View>
-          </GlassCard>
-
-          <View style={{ marginHorizontal: 16, marginBottom: 14 }}>
-            <SegmentedControl<Tab>
-              options={[
-                { id: 'all', label: t('envAll') },
-                { id: 'goals', label: t('envGoals') },
-                { id: 'buckets', label: t('envBuckets') },
-              ]}
-              active={tab}
-              onChange={setTab}
-            />
-          </View>
-
-          {tab === 'all' && main ? (
-            <View style={{ paddingHorizontal: 16 }}>
-              <View
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 6, paddingBottom: 8 }}
-              >
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: CashlyTheme.accent.blue }} />
-                <Text
+              ) : null}
+              {others.map((e) => (
+                <View
+                  key={e.id}
                   style={{
-                    fontSize: 11,
-                    fontWeight: '700',
-                    color: CashlyTheme.accent.blue,
-                    letterSpacing: 0.6,
-                    textTransform: 'uppercase',
+                    width: `${total > 0 ? (Number(e.balance) / total) * 100 : 0}%`,
+                    backgroundColor: e.color,
                   }}
-                >
-                  {t('envMain')}
-                </Text>
-              </View>
-              <EnvelopeCard env={main} onPress={() => uiStore.openEditEnvelope(main.id)} />
+                />
+              ))}
             </View>
-          ) : null}
 
+            <View style={{ flexDirection: 'row', gap: 16, marginTop: 12 }}>
+              <SumStat
+                color={CashlyTheme.accent.blue}
+                label={t('envAvailable')}
+                value={fmt(main ? Number(main.balance) : 0, lang)}
+                small={t('envMain')}
+              />
+              <SumStat
+                color={CashlyTheme.accent.purple}
+                label={t('envAllocated')}
+                value={fmt(allocated, lang)}
+                small={`${others.length} ${t('envCount')}`}
+              />
+            </View>
+          </View>
+        </GlassCard>
+
+        <View style={{ marginHorizontal: 16, marginBottom: 14 }}>
+          <SegmentedControl<Tab>
+            options={[
+              { id: 'all', label: t('envAll') },
+              { id: 'goals', label: t('envGoals') },
+              { id: 'buckets', label: t('envBuckets') },
+            ]}
+            active={tab}
+            onChange={setTab}
+          />
+        </View>
+
+        {tab === 'all' && main ? (
           <View style={{ paddingHorizontal: 16 }}>
-            {tab === 'all' ? (
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 6, paddingBottom: 8 }}
+            >
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: CashlyTheme.accent.blue }} />
               <Text
                 style={{
                   fontSize: 11,
                   fontWeight: '700',
-                  color: tokens.textTertiary,
+                  color: CashlyTheme.accent.blue,
                   letterSpacing: 0.6,
                   textTransform: 'uppercase',
-                  paddingHorizontal: 6,
-                  paddingVertical: 10,
                 }}
               >
-                {t('envYours')}
+                {t('envMain')}
               </Text>
-            ) : null}
-            {filtered.map((e) => (
-              <EnvelopeCard
-                key={e.id}
-                env={e}
-                onPress={() => uiStore.openEditEnvelope(e.id)}
-                onLongPress={() => uiStore.openAllocate(e.id)}
-              />
-            ))}
-            {filtered.length === 0 ? (
-              <GlassCard radius={22}>
-                <View style={{ padding: 28, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: tokens.textSecondary }}>{t('emptyEnvelopes')}</Text>
-                </View>
-              </GlassCard>
-            ) : null}
+            </View>
+            <EnvelopeCard env={main} onPress={() => uiStore.openEditEnvelope(main.id)} />
           </View>
-        </ScrollView>
-      </GestureDetector>
+        ) : null}
+
+        <View style={{ paddingHorizontal: 16 }}>
+          {tab === 'all' ? (
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '700',
+                color: tokens.textTertiary,
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+                paddingHorizontal: 6,
+                paddingVertical: 10,
+              }}
+            >
+              {t('envYours')}
+            </Text>
+          ) : null}
+          {filtered.map((e) => (
+            <EnvelopeCard
+              key={e.id}
+              env={e}
+              onPress={() => uiStore.openEditEnvelope(e.id)}
+              onLongPress={() => uiStore.openAllocate(e.id)}
+            />
+          ))}
+          {filtered.length === 0 ? (
+            <GlassCard radius={22}>
+              <View style={{ padding: 28, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: tokens.textSecondary }}>{t('emptyEnvelopes')}</Text>
+              </View>
+            </GlassCard>
+          ) : null}
+        </View>
+      </ScrollView>
     </View>
   );
 }

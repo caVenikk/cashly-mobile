@@ -1,7 +1,6 @@
 import React, { useCallback } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GestureDetector } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import { BalanceCard } from '@/src/components/home/BalanceCard';
 import { HomeHeader } from '@/src/components/home/HomeHeader';
@@ -32,7 +31,7 @@ export function HomeScreen() {
   const { refresh: refreshEnv } = useEnvelopes();
 
   const { refreshing, onRefresh } = useRefresh([refreshExp, refreshInc, refreshRec, refreshCat, refreshEnv]);
-  const { gesture, onScroll } = usePullToRefresh(onRefresh);
+  const pull = usePullToRefresh(onRefresh);
 
   const onGoTo = useCallback(
     (name: 'plans' | 'envelopes' | 'recurring') => {
@@ -52,39 +51,36 @@ export function HomeScreen() {
 
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
-      <GestureDetector gesture={gesture}>
-        <ScrollView
-          onScroll={onScroll}
-          scrollEventThrottle={16}
-          contentContainerStyle={{ paddingBottom: 120 }}
-          showsVerticalScrollIndicator={false}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={dark ? '#ffffff' : '#555555'}
-              colors={['#555555']}
-            />
-          }
-        >
-          <HomeHeader />
-          <BalanceCard monthExpenses={monthExpenses} incomes={incomes} />
-          <IncomeWidget incomes={incomes} onOpenList={() => uiStore.open('income')} />
-          <QuickActions onGoTo={onGoTo} />
-          <UpcomingWidget recurring={recurring} categories={categories} onSeeAll={() => onGoTo('recurring')} />
+      <ScrollView
+        {...pull}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={dark ? '#ffffff' : '#555555'}
+            colors={['#555555']}
+          />
+        }
+      >
+        <HomeHeader />
+        <BalanceCard monthExpenses={monthExpenses} incomes={incomes} />
+        <IncomeWidget incomes={incomes} onOpenList={() => uiStore.open('income')} />
+        <QuickActions onGoTo={onGoTo} />
+        <UpcomingWidget recurring={recurring} categories={categories} onSeeAll={() => onGoTo('recurring')} />
 
-          {initialLoading ? (
-            <View style={{ padding: 40, alignItems: 'center' }}>
-              <ActivityIndicator color={tokens.text} />
-              <Text style={{ color: tokens.textSecondary, marginTop: 12, fontSize: 13 }}>Загрузка…</Text>
-            </View>
-          ) : (
-            <TxList expenses={expenses} categories={categories} onDelete={onDelete} />
-          )}
-        </ScrollView>
-      </GestureDetector>
+        {initialLoading ? (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <ActivityIndicator color={tokens.text} />
+            <Text style={{ color: tokens.textSecondary, marginTop: 12, fontSize: 13 }}>Загрузка…</Text>
+          </View>
+        ) : (
+          <TxList expenses={expenses} categories={categories} onDelete={onDelete} />
+        )}
+      </ScrollView>
     </View>
   );
 }
