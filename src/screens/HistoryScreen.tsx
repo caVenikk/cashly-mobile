@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,6 +18,7 @@ import { useIncomes } from '@/src/hooks/useIncomes';
 import { useCategories } from '@/src/hooks/useCategories';
 import { useEnvelopes } from '@/src/hooks/useEnvelopes';
 import { useRefresh } from '@/src/hooks/useRefresh';
+import { useWebPullToRefresh } from '@/src/hooks/useWebPullToRefresh';
 import type { Expense, Income } from '@/src/types/db';
 
 type FilterMode = 'all' | 'expense' | 'income';
@@ -36,6 +37,8 @@ export function HistoryScreen() {
   const { envelopes } = useEnvelopes();
   const [filter, setFilter] = useState<FilterMode>('all');
   const { refreshing, onRefresh } = useRefresh([refreshExp, refreshInc, refreshCat]);
+  const scrollRef = useRef<ScrollView>(null);
+  useWebPullToRefresh(scrollRef, onRefresh);
 
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
@@ -89,6 +92,7 @@ export function HistoryScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
         refreshControl={

@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { uiStore } from '@/src/stores/ui';
 import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRefresh } from '@/src/hooks/useRefresh';
+import { useWebPullToRefresh } from '@/src/hooks/useWebPullToRefresh';
 import * as Haptics from 'expo-haptics';
 import { GlassCard } from '@/src/components/glass/GlassCard';
 import { CategoryBadge } from '@/src/components/glass/CategoryBadge';
@@ -29,6 +30,8 @@ export function CategoriesScreen() {
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState('');
   const { refreshing, onRefresh } = useRefresh([refreshCat, refreshExp]);
+  const scrollRef = useRef<ScrollView>(null);
+  useWebPullToRefresh(scrollRef, onRefresh);
 
   const thirtyDaysAgo = useMemo(() => {
     const d = new Date();
@@ -71,6 +74,7 @@ export function CategoriesScreen() {
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
