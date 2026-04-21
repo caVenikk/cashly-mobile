@@ -1,10 +1,23 @@
 import { useSyncExternalStore } from 'react';
+import { Platform } from 'react-native';
 import type { ThemeMode, ThemeTokens } from './theme';
 import { getTokens } from './theme';
 
 type Listener = () => void;
 
-let mode: ThemeMode = 'dark';
+function initialMode(): ThemeMode {
+  if (Platform.OS !== 'web') return 'dark';
+  try {
+    const attr = document.documentElement.getAttribute('data-theme');
+    if (attr === 'light' || attr === 'dark') return attr;
+    const stored = window.localStorage.getItem('cashly:theme');
+    if (stored === 'light' || stored === 'dark') return stored;
+    if (window.matchMedia?.('(prefers-color-scheme: light)').matches) return 'light';
+  } catch {}
+  return 'dark';
+}
+
+let mode: ThemeMode = initialMode();
 const listeners = new Set<Listener>();
 
 export const themeStore = {
