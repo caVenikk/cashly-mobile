@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native';
+import { View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
@@ -46,12 +47,13 @@ const SPRING_MASS = 0.6;
 export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const { dark, tokens } = useTokens();
   const t = useT();
-  // On web the actual positioning comes from a CSS rule in +html.tsx that
-  // targets #cashly-tabbar with `position: fixed; bottom: 10px` — RNW's
-  // style processor strips unknown position values, so we declare it in CSS
-  // where !important guarantees it wins over any react-navigation wrapper.
-  // On native we keep the original 26px offset.
-  const positionStyle = Platform.OS === 'web' ? { bottom: 10 } : { bottom: 26 };
+  // Respect the phone's safe area via react-native-safe-area-context. On
+  // iOS PWA (and native iPhones with a home indicator) insets.bottom is the
+  // home-indicator height; we add a small gap so the pill sits just above
+  // it. On desktop/Android without a safe area, insets.bottom is 0 → 16px
+  // from the screen edge.
+  const insets = useSafeAreaInsets();
+  const bottomOffset = Math.max(16, insets.bottom + 4);
   const textOff = dark ? 'rgba(235,235,245,0.5)' : 'rgba(60,60,67,0.55)';
   const accent = CashlyTheme.accent.income;
 
@@ -187,11 +189,7 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   };
 
   return (
-    <View
-      nativeID={Platform.OS === 'web' ? 'cashly-tabbar' : undefined}
-      style={[styles.wrap, positionStyle]}
-      pointerEvents="box-none"
-    >
+    <View style={[styles.wrap, { bottom: bottomOffset }]} pointerEvents="box-none">
       <View
         style={[
           styles.pill,

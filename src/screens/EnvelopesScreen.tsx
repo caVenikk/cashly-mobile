@@ -40,10 +40,10 @@ export function EnvelopesScreen() {
   }, [tab, others]);
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
       <ScrollView
         {...pull}
-        contentContainerStyle={{ paddingTop: insets.top + 6, paddingBottom: 90 }}
+        contentContainerStyle={{ paddingBottom: 90 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"

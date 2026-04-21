@@ -73,8 +73,8 @@ export function HistoryScreen() {
   const yIso = yesterdayIso();
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
+    <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
+      <View style={styles.header}>
         <Pressable
           onPress={() => {
             Haptics.selectionAsync();
