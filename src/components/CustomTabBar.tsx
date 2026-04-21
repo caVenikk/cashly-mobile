@@ -49,7 +49,11 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   // Sit close to the bottom edge on both platforms. The iOS home indicator
   // draws on top of whatever content is underneath, so overlapping it is OK
   // and avoids the "empty zone" below the bar that a safe-area offset adds.
-  const bottomStyle = { bottom: Platform.OS === 'web' ? 10 : 26 };
+  // On web we use position: fixed so the bar anchors to the viewport — not
+  // to whatever container react-navigation's tab layout sits in (that one
+  // reserves bottom space and was eating our offset).
+  const positionStyle =
+    Platform.OS === 'web' ? ({ position: 'fixed', bottom: 10 } as unknown as { bottom: number }) : { bottom: 26 };
   const textOff = dark ? 'rgba(235,235,245,0.5)' : 'rgba(60,60,67,0.55)';
   const accent = CashlyTheme.accent.income;
 
@@ -185,7 +189,7 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   };
 
   return (
-    <View style={[styles.wrap, bottomStyle]} pointerEvents="box-none">
+    <View style={[styles.wrap, positionStyle]} pointerEvents="box-none">
       <View
         style={[
           styles.pill,
