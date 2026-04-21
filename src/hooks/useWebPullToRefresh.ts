@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
 // Pull-to-refresh for React Native Web. RNW's RefreshControl is a no-op, and
@@ -7,7 +7,15 @@ import { Platform } from 'react-native';
 // touch target to find the nearest scrollable element (overflow:auto|scroll +
 // actual overflow content). If that element is at scrollTop 0 and the user
 // drags down past `threshold`, we fire onRefresh on touch end.
+//
+// We proxy onRefresh through a ref so callers don't have to memoize it —
+// otherwise the listeners would re-bind on every parent render.
 export function useWebPullToRefresh(onRefresh: () => void | Promise<unknown>, threshold = 70): void {
+  const latest = useRef(onRefresh);
+  useEffect(() => {
+    latest.current = onRefresh;
+  }, [onRefresh]);
+
   useEffect(() => {
     if (Platform.OS !== 'web') return;
 
@@ -52,7 +60,7 @@ export function useWebPullToRefresh(onRefresh: () => void | Promise<unknown>, th
 
     const onTouchEnd = (): void => {
       if (pulling && pullDistance > threshold) {
-        void onRefresh();
+        void latest.current();
       }
       pulling = false;
       pullDistance = 0;
@@ -69,5 +77,5 @@ export function useWebPullToRefresh(onRefresh: () => void | Promise<unknown>, th
       document.removeEventListener('touchend', onTouchEnd);
       document.removeEventListener('touchcancel', onTouchEnd);
     };
-  }, [onRefresh, threshold]);
+  }, [threshold]);
 }
