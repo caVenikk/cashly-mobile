@@ -73,8 +73,8 @@ export function HistoryScreen() {
   const yIso = yesterdayIso();
 
   return (
-    <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
-      <View style={styles.header}>
+    <View style={{ flex: 1 }}>
+      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <Pressable
           onPress={() => {
             Haptics.selectionAsync();
@@ -92,7 +92,7 @@ export function HistoryScreen() {
 
       <ScrollView
         {...pull}
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 90 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

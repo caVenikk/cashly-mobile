@@ -50,10 +50,10 @@ export function HomeScreen() {
   const initialLoading = loadingExp && loadingInc && expenses.length === 0;
 
   return (
-    <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
+    <View style={{ flex: 1 }}>
       <ScrollView
         {...pull}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingTop: insets.top + 6, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"

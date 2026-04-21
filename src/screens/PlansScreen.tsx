@@ -168,10 +168,10 @@ export function PlansScreen() {
   const later = forList.filter((e) => e.inDays > 7);
 
   return (
-    <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
+    <View style={{ flex: 1 }}>
       <ScrollView
         {...pull}
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingTop: insets.top + 6, paddingBottom: 90 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
