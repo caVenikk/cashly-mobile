@@ -45,6 +45,10 @@ export default function Root({ children }: PropsWithChildren) {
 }
 
 const BASE_CSS = `
+  :root {
+    --cashly-sab: env(safe-area-inset-bottom, 0px);
+    --cashly-sat: env(safe-area-inset-top, 0px);
+  }
   html, body {
     margin: 0;
     padding: 0;
@@ -76,9 +80,7 @@ const THEME_INIT = `
       document.documentElement.setAttribute('data-theme', mode);
     } catch (e) {}
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('__BASE_URL__/sw.js').catch(function () {});
-      });
+      navigator.serviceWorker.register('__BASE_URL__/sw.js').catch(function () {});
     }
   })();
 `;

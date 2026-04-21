@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native';
+import { Platform, View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useSafeAreaBottom } from '@/src/hooks/useSafeAreaBottom';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
@@ -47,11 +47,15 @@ const SPRING_MASS = 0.6;
 export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const { dark, tokens } = useTokens();
   const t = useT();
-  // Sit just above the iOS home indicator if one is present, otherwise near
-  // the screen edge. useSafeAreaBottom reads env(safe-area-inset-bottom) on
-  // web where the RN provider reports 0.
-  const bottomInset = useSafeAreaBottom();
-  const bottomOffset = Math.max(8, bottomInset);
+  // On web the CSS variable `--cashly-sab` (declared in +html.tsx) carries
+  // env(safe-area-inset-bottom), so the position reacts to the iOS home
+  // indicator through pure CSS — no listeners, no runtime measurement. On
+  // native we use the provider value.
+  const insets = useSafeAreaInsets();
+  const bottomStyle =
+    Platform.OS === 'web'
+      ? { bottom: 'calc(var(--cashly-sab, 0px) + 8px)' as unknown as number }
+      : { bottom: Math.max(8, insets.bottom) };
   const textOff = dark ? 'rgba(235,235,245,0.5)' : 'rgba(60,60,67,0.55)';
   const accent = CashlyTheme.accent.income;
 
@@ -187,7 +191,7 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   };
 
   return (
-    <View style={[styles.wrap, { bottom: bottomOffset }]} pointerEvents="box-none">
+    <View style={[styles.wrap, bottomStyle]} pointerEvents="box-none">
       <View
         style={[
           styles.pill,

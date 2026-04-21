@@ -3,8 +3,9 @@ import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInp
 import { uiStore } from '@/src/stores/ui';
 import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GestureDetector } from 'react-native-gesture-handler';
 import { useRefresh } from '@/src/hooks/useRefresh';
-import { useWebPullToRefresh } from '@/src/hooks/useWebPullToRefresh';
+import { usePullToRefresh } from '@/src/hooks/usePullToRefresh';
 import * as Haptics from 'expo-haptics';
 import { GlassCard } from '@/src/components/glass/GlassCard';
 import { CategoryBadge } from '@/src/components/glass/CategoryBadge';
@@ -30,7 +31,7 @@ export function CategoriesScreen() {
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState('');
   const { refreshing, onRefresh } = useRefresh([refreshCat, refreshExp]);
-  useWebPullToRefresh(onRefresh);
+  const { gesture, onScroll } = usePullToRefresh(onRefresh);
 
   const thirtyDaysAgo = useMemo(() => {
     const d = new Date();
@@ -72,125 +73,129 @@ export function CategoriesScreen() {
 
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 140 }}
-        showsVerticalScrollIndicator={false}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={dark ? '#ffffff' : '#555555'}
-            colors={['#555555']}
-          />
-        }
-      >
-        <View style={{ paddingHorizontal: 20, paddingVertical: 8 }}>
-          <Text style={{ fontSize: 13, color: tokens.textSecondary, fontWeight: '500' }}>
-            {t('spent30')} · {fmt(total, lang)}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 32, fontWeight: '800', color: tokens.text, letterSpacing: -0.8 }}>
-              {t('categoriesTitle')}
+      <GestureDetector gesture={gesture}>
+        <ScrollView
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ paddingBottom: 140 }}
+          showsVerticalScrollIndicator={false}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={dark ? '#ffffff' : '#555555'}
+              colors={['#555555']}
+            />
+          }
+        >
+          <View style={{ paddingHorizontal: 20, paddingVertical: 8 }}>
+            <Text style={{ fontSize: 13, color: tokens.textSecondary, fontWeight: '500' }}>
+              {t('spent30')} · {fmt(total, lang)}
             </Text>
-            <Pressable
-              onPress={() => {
-                Haptics.selectionAsync();
-                setEditing((v) => !v);
-              }}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 32, fontWeight: '800', color: tokens.text, letterSpacing: -0.8 }}>
+                {t('categoriesTitle')}
+              </Text>
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setEditing((v) => !v);
+                }}
+                style={{
+                  paddingVertical: 7,
+                  paddingHorizontal: 14,
+                  borderRadius: 16,
+                  backgroundColor: editing
+                    ? CashlyTheme.accent.income
+                    : dark
+                      ? 'rgba(255,255,255,0.1)'
+                      : 'rgba(0,0,0,0.06)',
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: editing ? '#fff' : tokens.text }}>
+                  {editing ? t('save') : t('customize')}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <GlassCard strong style={{ marginHorizontal: 16, marginBottom: 16 }}>
+            <View style={{ padding: 20 }}>
+              <Donut categories={categories} spendByCat={spendByCat} total={total} />
+            </View>
+          </GlassCard>
+
+          <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+            <View
               style={{
-                paddingVertical: 7,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
                 paddingHorizontal: 14,
+                paddingVertical: 10,
                 borderRadius: 16,
-                backgroundColor: editing
-                  ? CashlyTheme.accent.income
-                  : dark
-                    ? 'rgba(255,255,255,0.1)'
-                    : 'rgba(0,0,0,0.06)',
+                backgroundColor: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
               }}
             >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: editing ? '#fff' : tokens.text }}>
-                {editing ? t('save') : t('customize')}
-              </Text>
-            </Pressable>
+              <Icon name="search" color={tokens.textSecondary} size={16} />
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder={t('searchCategory')}
+                placeholderTextColor={tokens.textTertiary}
+                style={{ flex: 1, fontSize: 15, color: tokens.text, padding: 0 }}
+              />
+            </View>
           </View>
-        </View>
 
-        <GlassCard strong style={{ marginHorizontal: 16, marginBottom: 16 }}>
-          <View style={{ padding: 20 }}>
-            <Donut categories={categories} spendByCat={spendByCat} total={total} />
-          </View>
-        </GlassCard>
-
-        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              borderRadius: 16,
-              backgroundColor: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-            }}
-          >
-            <Icon name="search" color={tokens.textSecondary} size={16} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder={t('searchCategory')}
-              placeholderTextColor={tokens.textTertiary}
-              style={{ flex: 1, fontSize: 15, color: tokens.text, padding: 0 }}
-            />
-          </View>
-        </View>
-
-        <View style={{ paddingHorizontal: 16 }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-            {filtered.map((c, i) => (
-              <Jiggle key={c.id} active={editing} index={i} style={{ width: '31%' }}>
-                <CatCard
-                  c={c}
-                  spend={spendByCat.get(c.id) ?? 0}
-                  editing={editing}
-                  onEdit={() => uiStore.openEditCategory(c.id)}
-                  onDelete={() => onDelete(c)}
-                  onLongPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    setEditing(true);
-                  }}
-                />
-              </Jiggle>
-            ))}
-            <Pressable onPress={onAdd} style={{ width: '31%', minHeight: 100 }}>
-              <GlassCard radius={20}>
-                <View style={{ padding: 14, alignItems: 'center', gap: 8, minHeight: 100, justifyContent: 'center' }}>
-                  <View
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 18,
-                      borderWidth: 1.5,
-                      borderStyle: 'dashed',
-                      borderColor: tokens.textTertiary,
-                      alignItems: 'center',
-                      justifyContent: 'center',
+          <View style={{ paddingHorizontal: 16 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {filtered.map((c, i) => (
+                <Jiggle key={c.id} active={editing} index={i} style={{ width: '31%' }}>
+                  <CatCard
+                    c={c}
+                    spend={spendByCat.get(c.id) ?? 0}
+                    editing={editing}
+                    onEdit={() => uiStore.openEditCategory(c.id)}
+                    onDelete={() => onDelete(c)}
+                    onLongPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      setEditing(true);
                     }}
-                  >
-                    <Icon name="plus" color={tokens.textSecondary} size={22} />
+                  />
+                </Jiggle>
+              ))}
+              <Pressable onPress={onAdd} style={{ width: '31%', minHeight: 100 }}>
+                <GlassCard radius={20}>
+                  <View style={{ padding: 14, alignItems: 'center', gap: 8, minHeight: 100, justifyContent: 'center' }}>
+                    <View
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: 18,
+                        borderWidth: 1.5,
+                        borderStyle: 'dashed',
+                        borderColor: tokens.textTertiary,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Icon name="plus" color={tokens.textSecondary} size={22} />
+                    </View>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: tokens.textSecondary, textAlign: 'center' }}>
+                      {t('newCategory')}
+                    </Text>
                   </View>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: tokens.textSecondary, textAlign: 'center' }}>
-                    {t('newCategory')}
-                  </Text>
-                </View>
-              </GlassCard>
-            </Pressable>
+                </GlassCard>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </GestureDetector>
     </View>
   );
 }
