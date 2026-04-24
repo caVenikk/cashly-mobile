@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View, ScrollView } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { DatePicker } from '@/src/components/DatePicker';
+import { DatePicker, type DatePickerHandle } from '@/src/components/DatePicker';
 import * as Haptics from 'expo-haptics';
 import { SheetShell } from './SheetShell';
 import { GlassCard } from '@/src/components/glass/GlassCard';
@@ -29,7 +29,7 @@ export function AddRecurringSheet() {
   const [period, setPeriod] = useState<RecurringPeriod>('monthly');
   const [date, setDate] = useState<string>(todayIso());
   const [catId, setCatId] = useState<string | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
+  const dateRef = useRef<DatePickerHandle>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export function AddRecurringSheet() {
       setPeriod('monthly');
       setDate(todayIso());
       setCatId(categories[0]?.id ?? null);
-      setShowPicker(false);
+      dateRef.current?.close();
     }
   }, [open, categories]);
 
@@ -143,7 +143,7 @@ export function AddRecurringSheet() {
               })}
             </View>
           </FieldRow>
-          <Pressable onPress={() => setShowPicker(true)}>
+          <Pressable onPress={() => dateRef.current?.open()}>
             <FieldRow label={t('recNext')}>
               <Text style={{ fontSize: 15, fontWeight: '600', color: tokens.text }}>
                 {fmtDate(date, 'd MMMM yyyy', lang)}
@@ -181,7 +181,7 @@ export function AddRecurringSheet() {
           </FieldRow>
         </GlassCard>
 
-        <DatePicker value={date} visible={showPicker} onChange={setDate} onDismiss={() => setShowPicker(false)} />
+        <DatePicker ref={dateRef} value={date} onChange={setDate} />
       </BottomSheetScrollView>
     </SheetShell>
   );

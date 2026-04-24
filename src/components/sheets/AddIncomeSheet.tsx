@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
-import { DatePicker } from '@/src/components/DatePicker';
+import { DatePicker, type DatePickerHandle } from '@/src/components/DatePicker';
 import { SheetShell } from './SheetShell';
 import { GlassCard } from '@/src/components/glass/GlassCard';
 import { CashlyTheme } from '@/src/lib/theme';
@@ -29,7 +29,7 @@ export function AddIncomeSheet() {
   const [date, setDate] = useState<string>(todayIso());
   const [envId, setEnvId] = useState<string | null>(null);
   const [alreadyReceived, setAlreadyReceived] = useState(false);
-  const [showPicker, setShowPicker] = useState(false);
+  const dateRef = useRef<DatePickerHandle>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export function AddIncomeSheet() {
     setAmount('');
     setKind('recurring');
     setDate(todayIso());
-    setShowPicker(false);
+    dateRef.current?.close();
     setAlreadyReceived(false);
     setEnvId(envelopes.find((e) => e.kind === 'main')?.id ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -148,7 +148,7 @@ export function AddIncomeSheet() {
           <Pressable
             onPress={() => {
               Keyboard.dismiss();
-              setShowPicker(true);
+              dateRef.current?.open();
             }}
             style={styles.row}
           >
@@ -228,7 +228,7 @@ export function AddIncomeSheet() {
         </GlassCard>
 
         <View style={{ marginTop: 16, alignItems: 'center' }}>
-          <DatePicker value={date} visible={showPicker} onChange={setDate} onDismiss={() => setShowPicker(false)} />
+          <DatePicker ref={dateRef} value={date} onChange={setDate} />
         </View>
       </BottomSheetScrollView>
     </SheetShell>

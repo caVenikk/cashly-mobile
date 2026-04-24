@@ -14,7 +14,6 @@ import { useIncomes } from '@/src/hooks/useIncomes';
 import { useRecurring } from '@/src/hooks/useRecurring';
 import { useEnvelopes } from '@/src/hooks/useEnvelopes';
 import { useRefresh } from '@/src/hooks/useRefresh';
-import { usePullToRefresh } from '@/src/hooks/usePullToRefresh';
 import { useTokens } from '@/src/lib/themeMode';
 import { uiStore } from '@/src/stores/ui';
 
@@ -31,7 +30,6 @@ export function HomeScreen() {
   const { refresh: refreshEnv } = useEnvelopes();
 
   const { refreshing, onRefresh } = useRefresh([refreshExp, refreshInc, refreshRec, refreshCat, refreshEnv]);
-  const pull = usePullToRefresh(onRefresh);
 
   const onGoTo = useCallback(
     (name: 'plans' | 'envelopes' | 'recurring') => {
@@ -52,7 +50,6 @@ export function HomeScreen() {
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
       <ScrollView
-        {...pull}
         contentContainerStyle={{ paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"

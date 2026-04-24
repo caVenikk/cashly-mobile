@@ -4,7 +4,6 @@ import { uiStore } from '@/src/stores/ui';
 import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRefresh } from '@/src/hooks/useRefresh';
-import { usePullToRefresh } from '@/src/hooks/usePullToRefresh';
 import * as Haptics from 'expo-haptics';
 import { GlassCard } from '@/src/components/glass/GlassCard';
 import { CategoryBadge } from '@/src/components/glass/CategoryBadge';
@@ -30,7 +29,6 @@ export function CategoriesScreen() {
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState('');
   const { refreshing, onRefresh } = useRefresh([refreshCat, refreshExp]);
-  const pull = usePullToRefresh(onRefresh);
 
   const thirtyDaysAgo = useMemo(() => {
     const d = new Date();
@@ -73,7 +71,6 @@ export function CategoriesScreen() {
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
       <ScrollView
-        {...pull}
         contentContainerStyle={{ paddingBottom: 90 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"

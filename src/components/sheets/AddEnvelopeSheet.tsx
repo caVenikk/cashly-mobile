@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View, ScrollView } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { DatePicker } from '@/src/components/DatePicker';
+import { DatePicker, type DatePickerHandle } from '@/src/components/DatePicker';
 import * as Haptics from 'expo-haptics';
 import { SheetShell } from './SheetShell';
 import { GlassCard } from '@/src/components/glass/GlassCard';
@@ -46,7 +46,7 @@ export function AddEnvelopeSheet() {
   const [allocated, setAllocated] = useState('');
   const [cadence, setCadence] = useState<BillCadence>('month');
   const [deadline, setDeadline] = useState<string>(todayIso());
-  const [showPicker, setShowPicker] = useState(false);
+  const dateRef = useRef<DatePickerHandle>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export function AddEnvelopeSheet() {
       setAllocated('');
       setCadence('month');
       setDeadline(todayIso());
-      setShowPicker(false);
+      dateRef.current?.close();
     }
   }, [open]);
 
@@ -227,7 +227,7 @@ export function AddEnvelopeSheet() {
                   style={{ flex: 1, fontSize: 15, color: tokens.text, padding: 0 }}
                 />
               </Row>
-              <Pressable onPress={() => setShowPicker(true)}>
+              <Pressable onPress={() => dateRef.current?.open()}>
                 <Row label={t('envNewDeadline')} last>
                   <Text style={{ fontSize: 15, fontWeight: '600', color: tokens.text }}>
                     {fmtDate(deadline, 'd MMMM yyyy', lang)}
@@ -299,14 +299,7 @@ export function AddEnvelopeSheet() {
           ) : null}
         </GlassCard>
 
-        {kind === 'goal' ? (
-          <DatePicker
-            value={deadline}
-            visible={showPicker}
-            onChange={setDeadline}
-            onDismiss={() => setShowPicker(false)}
-          />
-        ) : null}
+        {kind === 'goal' ? <DatePicker ref={dateRef} value={deadline} onChange={setDeadline} /> : null}
       </BottomSheetScrollView>
     </SheetShell>
   );

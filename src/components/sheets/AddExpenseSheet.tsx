@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { DatePicker } from '@/src/components/DatePicker';
+import { DatePicker, type DatePickerHandle } from '@/src/components/DatePicker';
 import * as Haptics from 'expo-haptics';
 import { SheetShell } from './SheetShell';
 import { GlassCard } from '@/src/components/glass/GlassCard';
@@ -30,7 +30,7 @@ export function AddExpenseSheet() {
   const [envId, setEnvId] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [date, setDate] = useState<string>(todayIso());
-  const [showPicker, setShowPicker] = useState(false);
+  const dateRef = useRef<DatePickerHandle>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export function AddExpenseSheet() {
     setAmount('');
     setNote('');
     setDate(todayIso());
-    setShowPicker(false);
+    dateRef.current?.close();
     setCatId((prev) => prev ?? categories[0]?.id ?? null);
     setEnvId((prev) => prev ?? envelopes.find((e) => e.kind === 'main')?.id ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -240,7 +240,7 @@ export function AddExpenseSheet() {
                       key={d.id}
                       onPress={() => {
                         Haptics.selectionAsync();
-                        setShowPicker(false);
+                        dateRef.current?.close();
                         setDate(d.id);
                       }}
                       style={{
@@ -263,7 +263,7 @@ export function AddExpenseSheet() {
                 <Pressable
                   onPress={() => {
                     Haptics.selectionAsync();
-                    setShowPicker((p) => !p);
+                    dateRef.current?.toggle();
                   }}
                   style={{
                     paddingVertical: 6,
@@ -323,7 +323,7 @@ export function AddExpenseSheet() {
         </View>
 
         <View style={{ alignItems: 'center', paddingHorizontal: 12 }}>
-          <DatePicker value={date} visible={showPicker} onChange={setDate} onDismiss={() => setShowPicker(false)} />
+          <DatePicker ref={dateRef} value={date} onChange={setDate} />
         </View>
 
         {/* Numpad */}

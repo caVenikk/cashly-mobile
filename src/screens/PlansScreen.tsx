@@ -17,7 +17,6 @@ import { usePlanned } from '@/src/hooks/usePlanned';
 import { useCategories } from '@/src/hooks/useCategories';
 import { useIncomes } from '@/src/hooks/useIncomes';
 import { useRefresh } from '@/src/hooks/useRefresh';
-import { usePullToRefresh } from '@/src/hooks/usePullToRefresh';
 import { catById } from '@/src/lib/categoryHelpers';
 import { uiStore } from '@/src/stores/ui';
 import type { RecurringPeriod } from '@/src/types/db';
@@ -50,7 +49,6 @@ export function PlansScreen() {
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const { refreshing, onRefresh } = useRefresh([refreshRec, refreshPl, refreshCat, refreshInc]);
-  const pull = usePullToRefresh(onRefresh);
 
   const horizonEnd = useMemo(() => {
     const d = new Date(calendarMonth);
@@ -170,7 +168,6 @@ export function PlansScreen() {
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
       <ScrollView
-        {...pull}
         contentContainerStyle={{ paddingBottom: 90 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"

@@ -18,7 +18,6 @@ import { useIncomes } from '@/src/hooks/useIncomes';
 import { useCategories } from '@/src/hooks/useCategories';
 import { useEnvelopes } from '@/src/hooks/useEnvelopes';
 import { useRefresh } from '@/src/hooks/useRefresh';
-import { usePullToRefresh } from '@/src/hooks/usePullToRefresh';
 import type { Expense, Income } from '@/src/types/db';
 
 type FilterMode = 'all' | 'expense' | 'income';
@@ -37,7 +36,6 @@ export function HistoryScreen() {
   const { envelopes } = useEnvelopes();
   const [filter, setFilter] = useState<FilterMode>('all');
   const { refreshing, onRefresh } = useRefresh([refreshExp, refreshInc, refreshCat]);
-  const pull = usePullToRefresh(onRefresh);
 
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
@@ -91,7 +89,6 @@ export function HistoryScreen() {
       </View>
 
       <ScrollView
-        {...pull}
         contentContainerStyle={{ paddingBottom: 90 }}
         showsVerticalScrollIndicator={false}
         refreshControl={

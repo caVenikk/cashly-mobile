@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { DatePicker } from '@/src/components/DatePicker';
+import { DatePicker, type DatePickerHandle } from '@/src/components/DatePicker';
 import * as Haptics from 'expo-haptics';
 import { SheetShell } from './SheetShell';
 import { GlassCard } from '@/src/components/glass/GlassCard';
@@ -48,7 +48,7 @@ export function EditEnvelopeSheet() {
   const [allocated, setAllocated] = useState('');
   const [cadence, setCadence] = useState<BillCadence>('month');
   const [deadline, setDeadline] = useState<string>('');
-  const [showPicker, setShowPicker] = useState(false);
+  const dateRef = useRef<DatePickerHandle>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export function EditEnvelopeSheet() {
     setAllocated(env.allocated != null ? String(env.allocated) : '');
     setCadence(env.cadence ?? 'month');
     setDeadline(env.deadline ?? '');
-    setShowPicker(false);
+    dateRef.current?.close();
   }, [open, env]);
 
   if (!env) return null;
@@ -223,7 +223,7 @@ export function EditEnvelopeSheet() {
                   style={{ flex: 1, fontSize: 15, color: tokens.text, padding: 0 }}
                 />
               </Row>
-              <Pressable onPress={() => setShowPicker(true)}>
+              <Pressable onPress={() => dateRef.current?.open()}>
                 <Row label={t('envNewDeadline')} last={isMain}>
                   <Text style={{ fontSize: 15, fontWeight: '600', color: tokens.text }}>
                     {deadline ? fmtDate(deadline, 'd MMMM yyyy', lang) : '—'}
@@ -305,12 +305,7 @@ export function EditEnvelopeSheet() {
         ) : null}
 
         {env.kind === 'goal' ? (
-          <DatePicker
-            value={deadline || new Date().toISOString().slice(0, 10)}
-            visible={showPicker}
-            onChange={setDeadline}
-            onDismiss={() => setShowPicker(false)}
-          />
+          <DatePicker ref={dateRef} value={deadline || new Date().toISOString().slice(0, 10)} onChange={setDeadline} />
         ) : null}
       </BottomSheetScrollView>
     </SheetShell>

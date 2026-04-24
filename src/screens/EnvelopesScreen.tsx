@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRefresh } from '@/src/hooks/useRefresh';
-import { usePullToRefresh } from '@/src/hooks/usePullToRefresh';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { GlassCard } from '@/src/components/glass/GlassCard';
@@ -26,7 +25,6 @@ export function EnvelopesScreen() {
   const { envelopes, refresh: refreshEnv } = useEnvelopes();
   const [tab, setTab] = useState<Tab>('all');
   const { refreshing, onRefresh } = useRefresh([refreshEnv]);
-  const pull = usePullToRefresh(onRefresh);
 
   const main = envelopes.find((e) => e.kind === 'main');
   const others = envelopes.filter((e) => e.kind !== 'main');
@@ -42,7 +40,6 @@ export function EnvelopesScreen() {
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
       <ScrollView
-        {...pull}
         contentContainerStyle={{ paddingBottom: 90 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"

@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRefresh } from '@/src/hooks/useRefresh';
-import { usePullToRefresh } from '@/src/hooks/usePullToRefresh';
 import * as Haptics from 'expo-haptics';
 import { GlassCard } from '@/src/components/glass/GlassCard';
 import { CategoryBadge } from '@/src/components/glass/CategoryBadge';
@@ -31,7 +30,6 @@ export function RecurringScreen() {
   const { categories, refresh: refreshCat } = useCategories();
   const [filter, setFilter] = useState<Filter>('all');
   const { refreshing, onRefresh } = useRefresh([refreshRec, refreshCat]);
-  const pull = usePullToRefresh(onRefresh);
 
   const active = recurring.filter((r) => r.is_active);
   const paused = recurring.filter((r) => !r.is_active);
@@ -53,7 +51,6 @@ export function RecurringScreen() {
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
       <ScrollView
-        {...pull}
         contentContainerStyle={{ paddingBottom: 90 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"

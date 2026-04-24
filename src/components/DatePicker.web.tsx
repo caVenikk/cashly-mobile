@@ -1,44 +1,43 @@
-import React, { useEffect, useRef } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 
 type Props = {
   value: string;
-  visible: boolean;
   onChange: (iso: string) => void;
-  onDismiss?: () => void;
 };
 
-// Web version of DatePicker — the @react-native-community/datetimepicker
-// package has no usable web implementation, so we drop down to a native
-// <input type="date"> and trigger its browser-owned picker via showPicker().
-// The input itself is visually hidden; the Pressable trigger in the parent
-// sheet sets visible=true to pop the picker.
-export function DatePicker({ value, visible, onChange, onDismiss }: Props) {
-  const ref = useRef<HTMLInputElement>(null);
-  const wasVisible = useRef(false);
+export type DatePickerHandle = {
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
+};
 
-  useEffect(() => {
-    // Only react on the false → true transition so re-renders don't re-open
-    // the picker after the user has already dismissed/selected.
-    if (visible && !wasVisible.current) {
-      const input = ref.current;
-      if (input) {
-        input.value = value;
-        const maybeShow = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
-        try {
-          if (typeof maybeShow === 'function') maybeShow.call(input);
-          else input.click();
-        } catch {
-          input.focus();
-        }
+// Web DatePicker: an invisible <input type="date"> whose browser-owned picker
+// is opened imperatively via showPicker(). showPicker() requires user
+// activation, so the parent must call ref.current.open() synchronously inside
+// the onPress handler — routing through state + useEffect loses the gesture
+// and the browser silently refuses.
+export const DatePicker = forwardRef<DatePickerHandle, Props>(function DatePicker({ value, onChange }, ref) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => {
+    const open = () => {
+      const input = inputRef.current;
+      if (!input) return;
+      input.value = value;
+      const maybeShow = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
+      try {
+        if (typeof maybeShow === 'function') maybeShow.call(input);
+        else input.click();
+      } catch {
+        input.focus();
       }
-      onDismiss?.();
-    }
-    wasVisible.current = visible;
-  }, [visible, value, onDismiss]);
+    };
+    return { open, close: () => {}, toggle: open };
+  }, [value]);
 
   return (
     <input
-      ref={ref}
+      ref={inputRef}
       type="date"
       defaultValue={value}
       style={{
@@ -57,4 +56,4 @@ export function DatePicker({ value, visible, onChange, onDismiss }: Props) {
       }}
     />
   );
-}
+});
