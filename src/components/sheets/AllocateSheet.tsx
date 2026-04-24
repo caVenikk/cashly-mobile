@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import { SheetShell } from './SheetShell';
@@ -11,6 +11,7 @@ import { useLang, useT } from '@/src/i18n';
 import { fmt } from '@/src/lib/format';
 import { errorMessage } from '@/src/lib/errors';
 import { useSheet, useAllocateTarget } from '@/src/stores/ui';
+import { showSnackbar } from '@/src/stores/snackbar';
 import { useEnvelopes } from '@/src/hooks/useEnvelopes';
 import type { Envelope } from '@/src/types/db';
 
@@ -49,9 +50,10 @@ export function AllocateSheet() {
     try {
       await allocate(main.id, to.id, amt);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showSnackbar(t('snackAllocated'));
       setOpen(false);
     } catch (e) {
-      Alert.alert('Ошибка', errorMessage(e));
+      showSnackbar(errorMessage(e), 'error');
     } finally {
       setSaving(false);
     }

@@ -161,6 +161,8 @@ export const ru = {
   // Planned form
   planName: 'Название',
   planTarget: 'Дата (опционально)',
+  editPlan: 'Редактирование плана',
+  planPay: 'Оплатить',
 
   markPaid: 'Оплатить',
   paid: 'Оплачено',
@@ -183,6 +185,12 @@ export const ru = {
   errorTitle: 'Не удалось загрузить',
   supabaseMissing: 'Настройте Supabase в .env',
   add: 'Добавить',
+
+  snackSaved: 'Сохранено',
+  snackDeleted: 'Удалено',
+  snackPaid: 'Оплачено',
+  snackReceived: 'Получено',
+  snackAllocated: 'Готово',
 } as const;
 
 export type StringKey = keyof typeof ru;

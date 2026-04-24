@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import { SheetShell } from './SheetShell';
@@ -10,6 +10,7 @@ import { CashlyTheme } from '@/src/lib/theme';
 import { useTokens } from '@/src/lib/themeMode';
 import { useT } from '@/src/i18n';
 import { useSheet } from '@/src/stores/ui';
+import { showSnackbar } from '@/src/stores/snackbar';
 import { errorMessage } from '@/src/lib/errors';
 import { useCategories } from '@/src/hooks/useCategories';
 
@@ -134,9 +135,10 @@ export function AddCategorySheet() {
     try {
       await create({ name: name.trim(), icon: effectiveIcon, color });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showSnackbar(t('snackSaved'));
       setOpen(false);
     } catch (e) {
-      Alert.alert('Ошибка', errorMessage(e));
+      showSnackbar(errorMessage(e), 'error');
     } finally {
       setSaving(false);
     }

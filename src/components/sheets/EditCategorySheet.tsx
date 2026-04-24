@@ -10,6 +10,7 @@ import { CashlyTheme } from '@/src/lib/theme';
 import { useTokens } from '@/src/lib/themeMode';
 import { useT } from '@/src/i18n';
 import { useSheet, useEditCategoryId } from '@/src/stores/ui';
+import { showSnackbar } from '@/src/stores/snackbar';
 import { errorMessage } from '@/src/lib/errors';
 import { useCategories } from '@/src/hooks/useCategories';
 
@@ -138,9 +139,10 @@ export function EditCategorySheet() {
     try {
       await update(cat.id, { name: name.trim(), icon: effectiveIcon, color });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showSnackbar(t('snackSaved'));
       setOpen(false);
     } catch (e) {
-      Alert.alert('Ошибка', errorMessage(e));
+      showSnackbar(errorMessage(e), 'error');
     } finally {
       setSaving(false);
     }
@@ -156,10 +158,11 @@ export function EditCategorySheet() {
           try {
             await remove(cat.id);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            showSnackbar(t('snackDeleted'));
             setOpen(false);
           } catch (e) {
             const msg = errorMessage(e) === 'CATEGORY_IN_USE' ? t('deleteCategoryBlocked') : errorMessage(e);
-            Alert.alert('Ошибка', msg);
+            showSnackbar(msg, 'error');
           }
         },
       },

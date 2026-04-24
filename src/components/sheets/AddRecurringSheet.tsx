@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View, ScrollView } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View, ScrollView } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { DatePicker, type DatePickerHandle } from '@/src/components/DatePicker';
 import { DateOverlay } from '@/src/components/DateOverlay';
@@ -11,6 +11,7 @@ import { CashlyTheme } from '@/src/lib/theme';
 import { useTokens } from '@/src/lib/themeMode';
 import { useLang, useT } from '@/src/i18n';
 import { useSheet } from '@/src/stores/ui';
+import { showSnackbar } from '@/src/stores/snackbar';
 import { fmtDate, todayIso } from '@/src/lib/format';
 import { errorMessage } from '@/src/lib/errors';
 import { useRecurring } from '@/src/hooks/useRecurring';
@@ -58,9 +59,10 @@ export function AddRecurringSheet() {
         category_id: catId,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showSnackbar(t('snackSaved'));
       setOpen(false);
     } catch (e) {
-      Alert.alert('Ошибка', errorMessage(e));
+      showSnackbar(errorMessage(e), 'error');
     } finally {
       setSaving(false);
     }

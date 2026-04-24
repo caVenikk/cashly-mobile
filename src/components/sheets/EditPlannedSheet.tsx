@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, ScrollView } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View, ScrollView } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { DatePicker, type DatePickerHandle } from '@/src/components/DatePicker';
 import { DateOverlay } from '@/src/components/DateOverlay';
@@ -10,20 +10,23 @@ import { CategoryIcon } from '@/src/components/CategoryIcon';
 import { CashlyTheme } from '@/src/lib/theme';
 import { useTokens } from '@/src/lib/themeMode';
 import { useLang, useT } from '@/src/i18n';
-import { useSheet } from '@/src/stores/ui';
+import { useSheet, useEditPlannedId } from '@/src/stores/ui';
 import { showSnackbar } from '@/src/stores/snackbar';
 import { fmtDate, todayIso } from '@/src/lib/format';
 import { errorMessage } from '@/src/lib/errors';
 import { usePlanned } from '@/src/hooks/usePlanned';
 import { useCategories } from '@/src/hooks/useCategories';
 
-export function AddPlannedSheet() {
-  const { open, setOpen } = useSheet('addPlanned');
+export function EditPlannedSheet() {
+  const { open, setOpen } = useSheet('editPlanned');
+  const editId = useEditPlannedId();
   const { tokens, dark } = useTokens();
   const [lang] = useLang();
   const t = useT();
-  const { create } = usePlanned();
+  const { planned, update, remove } = usePlanned();
   const { categories } = useCategories();
+
+  const plan = planned.find((p) => p.id === editId);
 
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
@@ -33,14 +36,15 @@ export function AddPlannedSheet() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setName('');
-      setAmount('');
-      setDate(null);
-      setCatId(categories[0]?.id ?? null);
-      dateRef.current?.close();
-    }
-  }, [open, categories]);
+    if (!open || !plan) return;
+    setName(plan.name);
+    setAmount(String(plan.amount));
+    setDate(plan.target_date);
+    setCatId(plan.category_id);
+    dateRef.current?.close();
+  }, [open, plan]);
+
+  if (!plan) return null;
 
   const canSave = !saving && name.trim().length > 0 && parseFloat(amount || '0') > 0;
 
@@ -48,7 +52,12 @@ export function AddPlannedSheet() {
     if (!canSave) return;
     setSaving(true);
     try {
-      await create({ name: name.trim(), amount: parseFloat(amount), target_date: date, category_id: catId });
+      await update(plan.id, {
+        name: name.trim(),
+        amount: parseFloat(amount),
+        target_date: date,
+        category_id: catId,
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showSnackbar(t('snackSaved'));
       setOpen(false);
@@ -59,13 +68,33 @@ export function AddPlannedSheet() {
     }
   };
 
+  const onDelete = () => {
+    Alert.alert(plan.name, lang === 'ru' ? 'Удалить план?' : 'Delete plan?', [
+      { text: t('cancel'), style: 'cancel' },
+      {
+        text: t('delete'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await remove(plan.id);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            showSnackbar(t('snackDeleted'));
+            setOpen(false);
+          } catch (e) {
+            showSnackbar(errorMessage(e), 'error');
+          }
+        },
+      },
+    ]);
+  };
+
   return (
-    <SheetShell open={open} onClose={() => setOpen(false)} snapPoints={['70%']}>
+    <SheetShell open={open} onClose={() => setOpen(false)} snapPoints={['75%']}>
       <View style={styles.header}>
         <Pressable onPress={() => setOpen(false)} hitSlop={8}>
           <Text style={{ fontSize: 15, fontWeight: '500', color: tokens.textSecondary }}>{t('cancel')}</Text>
         </Pressable>
-        <Text style={{ fontSize: 17, fontWeight: '700', color: tokens.text }}>{t('createPlan')}</Text>
+        <Text style={{ fontSize: 17, fontWeight: '700', color: tokens.text }}>{t('editPlan')}</Text>
         <Pressable onPress={onSave} disabled={!canSave} hitSlop={8}>
           <Text
             style={{
@@ -92,7 +121,6 @@ export function AddPlannedSheet() {
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder={lang === 'ru' ? 'Зимние шины' : 'Winter tires'}
               placeholderTextColor={tokens.textTertiary}
               style={{ flex: 1, fontSize: 15, color: tokens.text, padding: 0 }}
             />
@@ -145,6 +173,37 @@ export function AddPlannedSheet() {
             </ScrollView>
           </FieldRow>
         </GlassCard>
+
+        {plan.is_done ? (
+          <View
+            style={{
+              marginTop: 14,
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              borderRadius: 12,
+              backgroundColor: dark ? 'rgba(52,199,89,0.12)' : 'rgba(52,199,89,0.1)',
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: 'rgba(52,199,89,0.3)',
+            }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '600', color: CashlyTheme.accent.income }}>{t('paid')}</Text>
+          </View>
+        ) : null}
+
+        <Pressable
+          onPress={onDelete}
+          style={{
+            marginTop: 18,
+            paddingVertical: 13,
+            borderRadius: 14,
+            alignItems: 'center',
+            backgroundColor: dark ? 'rgba(255,107,107,0.12)' : 'rgba(255,107,107,0.08)',
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: 'rgba(255,107,107,0.35)',
+          }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: '700', color: CashlyTheme.accent.expense }}>{t('delete')}</Text>
+        </Pressable>
 
         <DatePicker ref={dateRef} value={date || todayIso()} onChange={setDate} />
       </BottomSheetScrollView>

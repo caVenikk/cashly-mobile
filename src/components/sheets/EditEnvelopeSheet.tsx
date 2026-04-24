@@ -10,6 +10,7 @@ import { CashlyTheme } from '@/src/lib/theme';
 import { useTokens } from '@/src/lib/themeMode';
 import { useLang, useT } from '@/src/i18n';
 import { useSheet, useEditEnvelopeId } from '@/src/stores/ui';
+import { showSnackbar } from '@/src/stores/snackbar';
 import { fmtDate } from '@/src/lib/format';
 import { errorMessage } from '@/src/lib/errors';
 import { useEnvelopes } from '@/src/hooks/useEnvelopes';
@@ -87,9 +88,10 @@ export function EditEnvelopeSheet() {
         deadline: env.kind === 'goal' ? deadline || null : null,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showSnackbar(t('snackSaved'));
       setOpen(false);
     } catch (e) {
-      Alert.alert('Ошибка', errorMessage(e));
+      showSnackbar(errorMessage(e), 'error');
     } finally {
       setSaving(false);
     }
@@ -109,9 +111,10 @@ export function EditEnvelopeSheet() {
             try {
               await remove(env.id);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              showSnackbar(t('snackDeleted'));
               setOpen(false);
             } catch (e) {
-              Alert.alert('Ошибка', errorMessage(e));
+              showSnackbar(errorMessage(e), 'error');
             }
           },
         },

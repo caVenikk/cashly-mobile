@@ -12,6 +12,8 @@ import { useTokens } from '@/src/lib/themeMode';
 import { fmt, fmtDate } from '@/src/lib/format';
 import { useLang, useT } from '@/src/i18n';
 import { useSheet, uiStore } from '@/src/stores/ui';
+import { showSnackbar } from '@/src/stores/snackbar';
+import { errorMessage } from '@/src/lib/errors';
 import { useIncomes } from '@/src/hooks/useIncomes';
 import type { Income } from '@/src/types/db';
 
@@ -34,9 +36,10 @@ export function IncomeSheet() {
   const onReceive = async (inc: Income) => {
     try {
       await receive(inc);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
+      showSnackbar(t('snackReceived'));
+    } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showSnackbar(errorMessage(e), 'error');
     }
   };
 

@@ -11,6 +11,7 @@ import 'react-native-reanimated';
 import { ThemeBackground } from '@/src/components/ThemeBackground';
 import { useTokens } from '@/src/lib/themeMode';
 import { SheetHost } from '@/src/components/sheets/SheetHost';
+import { Snackbar } from '@/src/components/Snackbar';
 import { useAuthReady, useSession } from '@/src/lib/auth';
 import { LoginScreen } from '@/src/screens/LoginScreen';
 
@@ -85,6 +86,7 @@ function RootShell() {
         </ThemeBackground>
         <StatusBar style={dark ? 'light' : 'dark'} />
         {session ? <SheetHost /> : null}
+        <Snackbar />
       </View>
     </ThemeProvider>
   );

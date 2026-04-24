@@ -3,6 +3,8 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRefresh } from '@/src/hooks/useRefresh';
 import * as Haptics from 'expo-haptics';
+import { showSnackbar } from '@/src/stores/snackbar';
+import { errorMessage } from '@/src/lib/errors';
 import { GlassCard } from '@/src/components/glass/GlassCard';
 import { CategoryBadge } from '@/src/components/glass/CategoryBadge';
 import { IOSwitch } from '@/src/components/glass/IOSwitch';
@@ -220,8 +222,22 @@ export function RecurringScreen() {
                   item={r}
                   isLast={i === shown.length - 1}
                   onToggle={() => toggle(r.id, !r.is_active)}
-                  onDelete={() => remove(r.id)}
-                  onPay={() => pay(r)}
+                  onDelete={async () => {
+                    try {
+                      await remove(r.id);
+                      showSnackbar(t('snackDeleted'));
+                    } catch (e) {
+                      showSnackbar(errorMessage(e), 'error');
+                    }
+                  }}
+                  onPay={async () => {
+                    try {
+                      await pay(r);
+                      showSnackbar(t('snackPaid'));
+                    } catch (e) {
+                      showSnackbar(errorMessage(e), 'error');
+                    }
+                  }}
                   categoryColor={catById(categories, r.category_id).color}
                   categoryIcon={catById(categories, r.category_id).icon}
                 />
@@ -254,8 +270,8 @@ function RecurringRow({
   item: RecurringPayment;
   isLast: boolean;
   onToggle: () => void;
-  onDelete: () => void;
-  onPay: () => void;
+  onDelete: () => Promise<void>;
+  onPay: () => Promise<void>;
   categoryColor: string;
   categoryIcon: string;
 }) {

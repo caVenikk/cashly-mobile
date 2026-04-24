@@ -7,11 +7,12 @@ import { CategoryBadge } from '@/src/components/glass/CategoryBadge';
 import { CategoryIcon } from '@/src/components/CategoryIcon';
 import { SegmentedControl } from '@/src/components/glass/SegmentedControl';
 import { MonthCalendar, type CalendarEvent } from '@/src/components/MonthCalendar';
+import { SwipeableRow } from '@/src/components/SwipeableRow';
 import { Icon } from '@/src/components/Icon';
 import { CashlyTheme, alpha } from '@/src/lib/theme';
 import { useTokens } from '@/src/lib/themeMode';
 import { useLang, useT } from '@/src/i18n';
-import { fmt, fmtDate, daysUntil } from '@/src/lib/format';
+import { fmt, fmtDate, daysUntil, todayIso } from '@/src/lib/format';
 import { useRecurring } from '@/src/hooks/useRecurring';
 import { usePlanned } from '@/src/hooks/usePlanned';
 import { useCategories } from '@/src/hooks/useCategories';
@@ -19,6 +20,8 @@ import { useIncomes } from '@/src/hooks/useIncomes';
 import { useRefresh } from '@/src/hooks/useRefresh';
 import { catById } from '@/src/lib/categoryHelpers';
 import { uiStore } from '@/src/stores/ui';
+import { showSnackbar } from '@/src/stores/snackbar';
+import { errorMessage } from '@/src/lib/errors';
 import type { RecurringPeriod } from '@/src/types/db';
 
 type Filter = 'all' | 'recurring' | 'oneoff';
@@ -33,6 +36,8 @@ type Entry = {
   date: string;
   inDays: number;
   categoryId: string | null;
+  plannedId?: string;
+  isDone?: boolean;
 };
 
 export function PlansScreen() {
@@ -41,7 +46,7 @@ export function PlansScreen() {
   const [lang] = useLang();
   const t = useT();
   const { recurring, refresh: refreshRec } = useRecurring();
-  const { planned, refresh: refreshPl } = usePlanned();
+  const { planned, refresh: refreshPl, pay: payPlan, remove: removePlan } = usePlanned();
   const { categories, refresh: refreshCat } = useCategories();
   const { incomes, refresh: refreshInc } = useIncomes();
   const [filter, setFilter] = useState<Filter>('all');
@@ -85,7 +90,7 @@ export function PlansScreen() {
     }
 
     for (const p of planned) {
-      if (p.is_done || !p.target_date) continue;
+      if (!p.target_date) continue;
       out.push({
         id: `p:${p.id}`,
         kind: 'oneoff',
@@ -95,6 +100,8 @@ export function PlansScreen() {
         date: p.target_date,
         inDays: daysUntil(p.target_date),
         categoryId: p.category_id,
+        plannedId: p.id,
+        isDone: p.is_done,
       });
     }
 
@@ -164,6 +171,26 @@ export function PlansScreen() {
 
   const thisWeek = forList.filter((e) => e.inDays <= 7 && e.inDays >= 0);
   const later = forList.filter((e) => e.inDays > 7);
+
+  const onPlanPay = async (plannedId: string) => {
+    const p = planned.find((x) => x.id === plannedId);
+    if (!p) return;
+    try {
+      await payPlan(p);
+      showSnackbar(t('snackPaid'));
+    } catch (e) {
+      showSnackbar(errorMessage(e), 'error');
+    }
+  };
+
+  const onPlanDelete = async (plannedId: string) => {
+    try {
+      await removePlan(plannedId);
+      showSnackbar(t('snackDeleted'));
+    } catch (e) {
+      showSnackbar(errorMessage(e), 'error');
+    }
+  };
 
   return (
     <View style={{ flex: 1, paddingTop: insets.top + 6 }}>
@@ -353,6 +380,9 @@ export function PlansScreen() {
                       e={e}
                       isLast={i === monthList.length - 1}
                       category={catById(categories, e.categoryId)}
+                      onEdit={e.plannedId ? () => uiStore.openEditPlanned(e.plannedId!) : undefined}
+                      onPay={e.plannedId ? () => onPlanPay(e.plannedId!) : undefined}
+                      onDelete={e.plannedId ? () => onPlanDelete(e.plannedId!) : undefined}
                     />
                   ))}
                 </GlassCard>
@@ -366,6 +396,9 @@ export function PlansScreen() {
                   entries={thisWeek}
                   accent={CashlyTheme.accent.expense}
                   categories={categories}
+                  onEdit={(id) => uiStore.openEditPlanned(id)}
+                  onPay={onPlanPay}
+                  onDelete={onPlanDelete}
                 />
               ) : null}
               {later.length > 0 ? (
@@ -374,6 +407,9 @@ export function PlansScreen() {
                   entries={later}
                   accent={tokens.textSecondary}
                   categories={categories}
+                  onEdit={(id) => uiStore.openEditPlanned(id)}
+                  onPay={onPlanPay}
+                  onDelete={onPlanDelete}
                 />
               ) : null}
               {forList.length === 0 ? (
@@ -396,11 +432,17 @@ function PlanGroup({
   entries,
   accent,
   categories,
+  onEdit,
+  onPay,
+  onDelete,
 }: {
   title: string;
   entries: Entry[];
   accent: string;
   categories: ReturnType<typeof useCategories>['categories'];
+  onEdit?: (plannedId: string) => void;
+  onPay?: (plannedId: string) => void;
+  onDelete?: (plannedId: string) => void;
 }) {
   const { tokens, dark } = useTokens();
   return (
@@ -431,7 +473,15 @@ function PlanGroup({
       </View>
       <GlassCard radius={22}>
         {entries.map((e, i) => (
-          <PlanRow key={e.id} e={e} isLast={i === entries.length - 1} category={catById(categories, e.categoryId)} />
+          <PlanRow
+            key={e.id}
+            e={e}
+            isLast={i === entries.length - 1}
+            category={catById(categories, e.categoryId)}
+            onEdit={e.plannedId && onEdit ? () => onEdit(e.plannedId!) : undefined}
+            onPay={e.plannedId && onPay ? () => onPay(e.plannedId!) : undefined}
+            onDelete={e.plannedId && onDelete ? () => onDelete(e.plannedId!) : undefined}
+          />
         ))}
       </GlassCard>
     </View>
@@ -472,7 +522,21 @@ function Chip({
   );
 }
 
-function PlanRow({ e, isLast, category }: { e: Entry; isLast: boolean; category: ReturnType<typeof catById> }) {
+function PlanRow({
+  e,
+  isLast,
+  category,
+  onEdit,
+  onPay,
+  onDelete,
+}: {
+  e: Entry;
+  isLast: boolean;
+  category: ReturnType<typeof catById>;
+  onEdit?: () => void;
+  onPay?: () => void;
+  onDelete?: () => void;
+}) {
   const { tokens, dark } = useTokens();
   const [lang] = useLang();
   const t = useT();
@@ -485,8 +549,10 @@ function PlanRow({ e, isLast, category }: { e: Entry; isLast: boolean; category:
       : e.inDays <= 7
         ? CashlyTheme.accent.orange
         : CashlyTheme.accent.income;
-
-  return (
+  const paid = e.isDone === true;
+  const isPast = e.date < todayIso();
+  const canPay = !!onPay && !paid && !isPast;
+  const rowBody = (
     <View
       style={{
         flexDirection: 'row',
@@ -494,8 +560,10 @@ function PlanRow({ e, isLast, category }: { e: Entry; isLast: boolean; category:
         gap: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,
+        backgroundColor: dark ? 'rgba(28,28,34,0.95)' : 'rgba(255,255,255,0.98)',
         borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
         borderBottomColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+        opacity: paid ? 0.55 : 1,
       }}
     >
       <View
@@ -529,61 +597,172 @@ function PlanRow({ e, isLast, category }: { e: Entry; isLast: boolean; category:
       )}
 
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '600', color: tokens.text, letterSpacing: -0.2 }}>
+        <Text
+          numberOfLines={1}
+          style={{
+            fontSize: 15,
+            fontWeight: '600',
+            color: tokens.text,
+            letterSpacing: -0.2,
+            textDecorationLine: paid ? 'line-through' : 'none',
+          }}
+        >
           {e.name}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 3,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 6,
-              backgroundColor: alpha(
-                e.kind === 'recurring' ? CashlyTheme.accent.income : CashlyTheme.accent.purple,
-                0.15,
-              ),
-            }}
-          >
-            <Icon
-              name={e.kind === 'recurring' ? 'repeat' : 'flash'}
-              color={e.kind === 'recurring' ? CashlyTheme.accent.income : CashlyTheme.accent.purple}
-              size={9}
-            />
-            <Text
+          {paid ? (
+            <View
               style={{
-                fontSize: 10,
-                fontWeight: '600',
-                color: e.kind === 'recurring' ? CashlyTheme.accent.income : CashlyTheme.accent.purple,
-                letterSpacing: 0.2,
-                textTransform: 'uppercase',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 3,
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                borderRadius: 6,
+                backgroundColor: alpha(CashlyTheme.accent.income, 0.15),
               }}
             >
-              {e.kind === 'recurring' ? t('planRecurring') : t('planOneOff')}
-            </Text>
-          </View>
+              <Icon name="check" color={CashlyTheme.accent.income} size={9} />
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: '700',
+                  color: CashlyTheme.accent.income,
+                  letterSpacing: 0.2,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {t('paid')}
+              </Text>
+            </View>
+          ) : (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 3,
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                borderRadius: 6,
+                backgroundColor: alpha(
+                  e.kind === 'recurring' ? CashlyTheme.accent.income : CashlyTheme.accent.purple,
+                  0.15,
+                ),
+              }}
+            >
+              <Icon
+                name={e.kind === 'recurring' ? 'repeat' : 'flash'}
+                color={e.kind === 'recurring' ? CashlyTheme.accent.income : CashlyTheme.accent.purple}
+                size={9}
+              />
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: '600',
+                  color: e.kind === 'recurring' ? CashlyTheme.accent.income : CashlyTheme.accent.purple,
+                  letterSpacing: 0.2,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {e.kind === 'recurring' ? t('planRecurring') : t('planOneOff')}
+              </Text>
+            </View>
+          )}
           <Text style={{ fontSize: 11, color: tokens.textSecondary }}>
-            · {fmtDate(e.date, 'd MMM', lang)} ·{' '}
-            <Text style={{ color: due, fontWeight: '600' }}>
-              {e.inDays} {t('dayShort')}.
-            </Text>
+            · {fmtDate(e.date, 'd MMM', lang)}
+            {!paid ? (
+              <>
+                {' · '}
+                <Text style={{ color: due, fontWeight: '600' }}>
+                  {e.inDays} {t('dayShort')}.
+                </Text>
+              </>
+            ) : null}
           </Text>
         </View>
       </View>
-      <Text
-        style={{
-          fontSize: 15,
-          fontWeight: '700',
-          color: isIn ? CashlyTheme.accent.income : tokens.text,
-          letterSpacing: -0.3,
-        }}
-      >
-        {isIn ? '+ ' : ''}
-        {fmt(e.amount, lang)}
-      </Text>
+      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+        <Text
+          style={{
+            fontSize: 15,
+            fontWeight: '700',
+            color: isIn ? CashlyTheme.accent.income : tokens.text,
+            letterSpacing: -0.3,
+          }}
+        >
+          {isIn ? '+ ' : ''}
+          {fmt(e.amount, lang)}
+        </Text>
+        {canPay ? (
+          <Pressable
+            onPress={() => {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              onPay?.();
+            }}
+            hitSlop={4}
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 10,
+              backgroundColor: urgent
+                ? CashlyTheme.accent.income
+                : dark
+                  ? 'rgba(255,255,255,0.08)'
+                  : 'rgba(0,0,0,0.06)',
+            }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: '700', color: urgent ? '#fff' : tokens.text }}>
+              {t('planPay')}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
+  );
+
+  const tappable = onEdit ? (
+    <Pressable
+      onPress={() => {
+        Haptics.selectionAsync();
+        onEdit();
+      }}
+    >
+      {rowBody}
+    </Pressable>
+  ) : (
+    rowBody
+  );
+
+  if (!onDelete) return tappable;
+
+  const actions = (
+    <View
+      style={{
+        width: 62,
+        height: '80%',
+        borderRadius: 14,
+        backgroundColor: CashlyTheme.accent.expense,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Pressable
+        onPress={() => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          onDelete();
+        }}
+        style={{ alignItems: 'center' }}
+      >
+        <Icon name="trash" color="#fff" size={18} />
+        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600', marginTop: 2 }}>{t('delete')}</Text>
+      </Pressable>
+    </View>
+  );
+
+  return (
+    <SwipeableRow rightActions={actions} revealWidth={76}>
+      {tappable}
+    </SwipeableRow>
   );
 }
 

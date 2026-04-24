@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { uiStore } from '@/src/stores/ui';
+import { showSnackbar } from '@/src/stores/snackbar';
 import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRefresh } from '@/src/hooks/useRefresh';
@@ -62,9 +63,10 @@ export function CategoriesScreen() {
     try {
       await remove(c.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showSnackbar(t('snackDeleted'));
     } catch (e) {
       const msg = errorMessage(e) === 'CATEGORY_IN_USE' ? t('deleteCategoryBlocked') : errorMessage(e);
-      Alert.alert(msg);
+      showSnackbar(msg, 'error');
     }
   };
 

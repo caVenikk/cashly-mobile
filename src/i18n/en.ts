@@ -151,6 +151,8 @@ export const en: Record<StringKey, string> = {
 
   planName: 'Name',
   planTarget: 'Date (optional)',
+  editPlan: 'Edit plan',
+  planPay: 'Pay',
 
   markPaid: 'Pay',
   paid: 'Paid',
@@ -172,4 +174,10 @@ export const en: Record<StringKey, string> = {
   errorTitle: 'Failed to load',
   supabaseMissing: 'Configure Supabase in .env',
   add: 'Add',
+
+  snackSaved: 'Saved',
+  snackDeleted: 'Deleted',
+  snackPaid: 'Paid',
+  snackReceived: 'Received',
+  snackAllocated: 'Done',
 };

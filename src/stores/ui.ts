@@ -4,6 +4,7 @@ type SheetKey =
   | 'addExpense'
   | 'addRecurring'
   | 'addPlanned'
+  | 'editPlanned'
   | 'addIncome'
   | 'addEnvelope'
   | 'editEnvelope'
@@ -35,6 +36,7 @@ const stores: Record<SheetKey, OpenStore> = {
   addExpense: new OpenStore(),
   addRecurring: new OpenStore(),
   addPlanned: new OpenStore(),
+  editPlanned: new OpenStore(),
   addIncome: new OpenStore(),
   addEnvelope: new OpenStore(),
   editEnvelope: new OpenStore(),
@@ -52,6 +54,9 @@ const editEnvListeners = new Set<Listener>();
 
 let editCategoryId: string | null = null;
 const editCategoryListeners = new Set<Listener>();
+
+let editPlannedId: string | null = null;
+const editPlannedListeners = new Set<Listener>();
 
 export const uiStore = {
   open(key: SheetKey): void {
@@ -74,6 +79,11 @@ export const uiStore = {
     editCategoryId = catId;
     editCategoryListeners.forEach((l) => l());
     stores.editCategory.setOpen(true);
+  },
+  openEditPlanned(planId: string): void {
+    editPlannedId = planId;
+    editPlannedListeners.forEach((l) => l());
+    stores.editPlanned.setOpen(true);
   },
 };
 
@@ -119,5 +129,18 @@ export function useEditCategoryId(): string | null {
     },
     () => editCategoryId,
     () => editCategoryId,
+  );
+}
+
+export function useEditPlannedId(): string | null {
+  return useSyncExternalStore(
+    (l) => {
+      editPlannedListeners.add(l);
+      return () => {
+        editPlannedListeners.delete(l);
+      };
+    },
+    () => editPlannedId,
+    () => editPlannedId,
   );
 }
