@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View, ScrollView } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { DatePicker, type DatePickerHandle } from '@/src/components/DatePicker';
+import { DateOverlay } from '@/src/components/DateOverlay';
 import * as Haptics from 'expo-haptics';
 import { SheetShell } from './SheetShell';
 import { GlassCard } from '@/src/components/glass/GlassCard';
@@ -149,6 +150,7 @@ export function AddRecurringSheet() {
                 {fmtDate(date, 'd MMMM yyyy', lang)}
               </Text>
             </FieldRow>
+            <DateOverlay value={date} onChange={setDate} />
           </Pressable>
           <FieldRow label={t('category')} last>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>

@@ -3,6 +3,7 @@ import { Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'r
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import { DatePicker, type DatePickerHandle } from '@/src/components/DatePicker';
+import { DateOverlay } from '@/src/components/DateOverlay';
 import { SheetShell } from './SheetShell';
 import { GlassCard } from '@/src/components/glass/GlassCard';
 import { CashlyTheme } from '@/src/lib/theme';
@@ -158,6 +159,7 @@ export function AddIncomeSheet() {
             <Text style={{ fontSize: 15, fontWeight: '600', color: tokens.text }}>
               {fmtDate(date, 'd MMMM yyyy', lang)}
             </Text>
+            <DateOverlay value={date} onChange={setDate} />
           </Pressable>
           {kind === 'oneoff' ? (
             <Pressable

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { DatePicker, type DatePickerHandle } from '@/src/components/DatePicker';
+import { DateOverlay } from '@/src/components/DateOverlay';
 import * as Haptics from 'expo-haptics';
 import { SheetShell } from './SheetShell';
 import { GlassCard } from '@/src/components/glass/GlassCard';
@@ -229,6 +230,7 @@ export function EditEnvelopeSheet() {
                     {deadline ? fmtDate(deadline, 'd MMMM yyyy', lang) : '—'}
                   </Text>
                 </Row>
+                <DateOverlay value={deadline || new Date().toISOString().slice(0, 10)} onChange={setDeadline} />
               </Pressable>
             </>
           ) : null}

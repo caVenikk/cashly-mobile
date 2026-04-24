@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useImperativeHandle } from 'react';
 
 type Props = {
   value: string;
@@ -11,49 +11,19 @@ export type DatePickerHandle = {
   toggle: () => void;
 };
 
-// Web DatePicker: an invisible <input type="date"> whose browser-owned picker
-// is opened imperatively via showPicker(). showPicker() requires user
-// activation, so the parent must call ref.current.open() synchronously inside
-// the onPress handler — routing through state + useEffect loses the gesture
-// and the browser silently refuses.
-export const DatePicker = forwardRef<DatePickerHandle, Props>(function DatePicker({ value, onChange }, ref) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useImperativeHandle(ref, () => {
-    const open = () => {
-      const input = inputRef.current;
-      if (!input) return;
-      input.value = value;
-      const maybeShow = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
-      try {
-        if (typeof maybeShow === 'function') maybeShow.call(input);
-        else input.click();
-      } catch {
-        input.focus();
-      }
-    };
-    return { open, close: () => {}, toggle: open };
-  }, [value]);
-
-  return (
-    <input
-      ref={inputRef}
-      type="date"
-      defaultValue={value}
-      style={{
-        position: 'absolute',
-        opacity: 0,
-        pointerEvents: 'none',
-        width: 1,
-        height: 1,
-        border: 'none',
-        padding: 0,
-        margin: 0,
-      }}
-      onChange={(e) => {
-        const v = e.currentTarget.value;
-        if (v) onChange(v);
-      }}
-    />
+// Web no-op. The actual picker is a transparent <input type="date"> overlaid
+// on the trigger (DateOverlay). The ref handle stays for API parity with the
+// native version; open/close/toggle do nothing on web — the browser's native
+// picker opens from a direct tap on the overlaid input.
+export const DatePicker = forwardRef<DatePickerHandle, Props>(function DatePicker(_props, ref) {
+  useImperativeHandle(
+    ref,
+    () => ({
+      open: () => {},
+      close: () => {},
+      toggle: () => {},
+    }),
+    [],
   );
+  return null;
 });
